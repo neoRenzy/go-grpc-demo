@@ -13,9 +13,15 @@ type MessageSenderServerImpl struct {
 }
 
 func (MessageSenderServerImpl) Send(context context.Context, request *pb.MessageRequest) (*pb.MessageResponse, error) {
-	log.Println("receive message:", request.GetSaySomething())
-	resp := &pb.MessageResponse{}
-	resp.ResponseSomething = "roger that!"
+	firstNum := request.GetFirstNum()
+	secondNum := request.GetSecondNum()
+
+	log.Println("receive message: firstNum = ", firstNum)
+	log.Println("receive message: secondNum = ", secondNum)
+
+	resp := &pb.MessageResponse{
+		Result: firstNum ^ secondNum,
+	}
 	return resp, nil
 }
 
