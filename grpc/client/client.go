@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"go-grpc-demo/grpc/pb"
 	"google.golang.org/grpc"
 	"log"
@@ -26,17 +27,16 @@ func main() {
 func oneThreadTest(client pb.MessageSenderClient) {
 	startTime := time.Now()
 	for i := 0; i < 100000; i++ {
-		resp, err := client.Send(context.Background(), &pb.MessageRequest{
+		_, err := client.Send(context.Background(), &pb.MessageRequest{
 			FirstNum:  32,
 			SecondNum: 46,
 		})
 		if err != nil {
 			log.Fatalf("could not greet: %v", err)
 		}
-		log.Println("receive message:", resp.GetResult())
 	}
 	endTime := time.Now()
-	log.Println("oneThreadTest cost time:", startTime.Sub(endTime).Nanoseconds())
+	log.Println(fmt.Sprintf("oneThreadTest cost time: %.4f 秒", endTime.Sub(startTime).Seconds()))
 }
 
 func fiveThreadsTest(client pb.MessageSenderClient) {
@@ -46,19 +46,18 @@ func fiveThreadsTest(client pb.MessageSenderClient) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for i := 0; i < 2000; i++ {
-				resp, err := client.Send(context.Background(), &pb.MessageRequest{
+			for i := 0; i < 20000; i++ {
+				_, err := client.Send(context.Background(), &pb.MessageRequest{
 					FirstNum:  32,
 					SecondNum: 46,
 				})
 				if err != nil {
 					log.Fatalf("could not greet: %v", err)
 				}
-				log.Println("receive message:", resp.GetResult())
 			}
 		}()
 	}
 	wg.Wait()
 	endTime := time.Now()
-	log.Println("fiveThreadsTest cost time:", startTime.Sub(endTime).Nanoseconds())
+	log.Println(fmt.Sprintf("fiveThreadsTest cost time: %.4f 秒", endTime.Sub(startTime).Seconds()))
 }

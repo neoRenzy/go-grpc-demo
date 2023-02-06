@@ -6,6 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"log"
 	"net"
+	"time"
 )
 
 type MessageSenderServerImpl struct {
@@ -16,8 +17,9 @@ func (MessageSenderServerImpl) Send(context context.Context, request *pb.Message
 	firstNum := request.GetFirstNum()
 	secondNum := request.GetSecondNum()
 
-	log.Println("receive message: firstNum = ", firstNum)
-	log.Println("receive message: secondNum = ", secondNum)
+	//log.Println("receive message: firstNum = ", firstNum)
+	//log.Println("receive message: secondNum = ", secondNum)
+	log.Println("receive message: time = ", time.Now())
 
 	resp := &pb.MessageResponse{
 		Result: firstNum ^ secondNum,

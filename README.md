@@ -1,37 +1,33 @@
 # go-grpc-demo
 
-#### 介绍
-golang-grpc框架demo
+##从.proto文件生成.go文件
+protoc --go_out=.  test.proto  
+protoc --go-grpc_out=. test.proto
 
-#### 软件架构
-软件架构说明
+##测试内容
+基于整数XOR服务压测  
+包含并发=1(串行压测)和并发=5两种
 
+##测试环境
+###硬件信息
+芯片：	Apple M1 Pro  
+核总数：	8（6性能和2能效）  
+内存：	16 GB  
 
-#### 安装教程
+###操作系统
+macOS 12.3
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+###语言
+golang
 
-#### 使用说明
+###gRpc开源库信息
+google.golang.org/grpc v1.52.3
+libprotoc v3.21.12
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+###thrift信息
 
-#### 参与贡献
-
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
-
-
-#### 特技
-
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+## 压测结果
+同为十万次请求，分为单协程处理和五协程并发处理两种情况
+###grpc测试结果
+串行处理时间 : 6.0399 秒
+并发处理时间: 9.7539 秒
