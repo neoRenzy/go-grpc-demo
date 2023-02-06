@@ -3,11 +3,12 @@ syntax = "proto3";
 option go_package = "../pb;pb";
 
 message MessageResponse {
-  string responseSomething = 1;
+  int32 result = 1;
 }
 
 message MessageRequest {
-  string saySomething = 1;
+  int32 firstNum = 1;
+  int32 secondNum = 2;
 }
 
 service MessageSender {
