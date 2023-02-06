@@ -1,4 +1,4 @@
-package client
+package main
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	conn, err := grpc.Dial("127.0.0.1:8002")
+	conn, err := grpc.Dial("127.0.0.1:8002", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
