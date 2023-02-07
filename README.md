@@ -21,6 +21,13 @@ macOS 12.3
 golang
 
 ###gRpc开源库信息
+####golang使用grpc方法
+protoc --version  查看版本信息  
+curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip下载proto文件  
+unzip protoc-3.15.8-linux-x86_64.zip -d /usr/.local/bin 解压到usr下的bin目录
+go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28 下载.proto文件生成.pb.go
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2 下载.proto-->***_grpc.pb.go
+####版本信息
 google.golang.org/grpc v1.52.3
 libprotoc v3.21.12
 

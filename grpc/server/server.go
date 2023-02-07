@@ -28,9 +28,16 @@ func (MessageSenderServerImpl) Send(context context.Context, request *pb.Message
 }
 
 func main() {
+	// 单线程处理任务，port:8080
+	oneThreadHandler()
+	// 五线程处理任务，port:8081
+	fiveThreadHandler()
+}
+
+func oneThreadHandler() {
 	srv := grpc.NewServer()
 	pb.RegisterMessageSenderServer(srv, MessageSenderServerImpl{})
-	listener, err := net.Listen("tcp", ":8002")
+	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -39,4 +46,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+}
+
+func fiveThreadHandler() {
+
 }
