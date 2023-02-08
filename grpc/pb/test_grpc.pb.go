@@ -8,6 +8,7 @@ package pb
 
 import (
 	context "context"
+	"github.com/shettyh/threadpool"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -105,7 +106,7 @@ var MessageSender_ServiceDesc = grpc.ServiceDesc{
 }
 
 // 并发处理server注册
-func RegisterConcurrencyMessageSenderServer(s grpc.ServiceRegistrar, srvs *ServerPool) {
+func RegisterConcurrencyMessageSenderServer(s grpc.ServiceRegistrar, srvs *threadpool.ThreadPool) {
 	s.RegisterService(&MessageSender_Concurrency_ServiceDesc, srvs)
 }
 
@@ -115,14 +116,24 @@ func _MessageSender_Concurrency_Send_Handler(srv interface{}, ctx context.Contex
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MessageSenderServer).Send(ctx, in)
+		pool := srv.(*threadpool.ThreadPool)
+		task := &taskSend{
+			in: in,
+		}
+		err := pool.Execute(task)
+		return MessageResponse{Result: task.result}, err
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/MessageSender/Send",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessageSenderServer).Send(ctx, req.(*MessageRequest))
+		pool := srv.(*threadpool.ThreadPool)
+		task := &taskSend{
+			in: in,
+		}
+		err := pool.Execute(task)
+		return MessageResponse{Result: task.result}, err
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -143,29 +154,41 @@ var MessageSender_Concurrency_ServiceDesc = grpc.ServiceDesc{
 	Metadata: "test.proto",
 }
 
-type ServerPool struct {
-	num  int
-	srvs []*chan MessageSenderServer
+type taskSend struct {
+	in     *MessageRequest
+	result int32
 }
 
-func NewServerPool(num int, ctx context.Context, req *MessageRequest) *ServerPool {
-	srvPool := &ServerPool{
-		num: num,
-	}
-	for i := 0; i < num; i++ {
-		c := make(chan MessageSenderServer)
-		srvPool.srvs = append(srvPool.srvs, &c)
-		go func(sender *chan MessageSenderServer) {
-			for {
-				select {
-				case f := <-*sender:
-					{
-						f.Send(ctx, req)
-					}
-				default:
-				}
-			}
-		}(&c)
-	}
-	return srvPool
+func (t *taskSend) Run() {
+	firstNum := t.in.FirstNum
+	secondNum := t.in.SecondNum
+
+	t.result = firstNum ^ secondNum
 }
+
+//type ServerPool struct {
+//	num  int
+//	srvs []*chan MessageSenderServer
+//}
+//
+//func NewServerPool(num int, ctx context.Context, req *MessageRequest) *ServerPool {
+//	srvPool := &ServerPool{
+//		num: num,
+//	}
+//	for i := 0; i < num; i++ {
+//		c := make(chan MessageSenderServer)
+//		srvPool.srvs = append(srvPool.srvs, &c)
+//		go func(sender *chan MessageSenderServer) {
+//			for {
+//				select {
+//				case f := <-*sender:
+//					{
+//						f.Send(ctx, req)
+//					}
+//				default:
+//				}
+//			}
+//		}(&c)
+//	}
+//	return srvPool
+//}

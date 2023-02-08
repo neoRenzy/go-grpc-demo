@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/shettyh/threadpool"
 	"go-grpc-demo/grpc/pb"
 	"google.golang.org/grpc"
 	"log"
@@ -49,5 +50,18 @@ func oneThreadHandler() {
 }
 
 func fiveThreadHandler() {
+	pool := threadpool.NewThreadPool(5, 100)
+	defer pool.Close()
 
+	srv := grpc.NewServer()
+	pb.RegisterConcurrencyMessageSenderServer(srv, pool)
+	listener, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	err = srv.Serve(listener)
+	if err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }
