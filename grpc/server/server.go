@@ -55,7 +55,7 @@ func fiveThreadHandler() {
 
 	srv := grpc.NewServer()
 	pb.RegisterConcurrencyMessageSenderServer(srv, pool)
-	listener, err := net.Listen("tcp", ":8080")
+	listener, err := net.Listen("tcp", ":8081")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
