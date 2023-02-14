@@ -8,7 +8,6 @@ package pb
 
 import (
 	context "context"
-	"github.com/shettyh/threadpool"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -47,6 +46,11 @@ func (c *messageSenderClient) Send(ctx context.Context, in *MessageRequest, opts
 // All implementations must embed UnimplementedMessageSenderServer
 // for forward compatibility
 type MessageSenderServer interface {
+	Send(context.Context, *MessageRequest) (*MessageResponse, error)
+	mustEmbedUnimplementedMessageSenderServer()
+}
+
+type MessageSenderServerConcurrency interface {
 	Send(context.Context, *MessageRequest) (*MessageResponse, error)
 	mustEmbedUnimplementedMessageSenderServer()
 }
@@ -106,7 +110,7 @@ var MessageSender_ServiceDesc = grpc.ServiceDesc{
 }
 
 // 并发处理server注册
-func RegisterConcurrencyMessageSenderServer(s grpc.ServiceRegistrar, srvs *threadpool.ThreadPool) {
+func RegisterConcurrencyMessageSenderServer(s grpc.ServiceRegistrar, srvs MessageSenderServerConcurrency) {
 	s.RegisterService(&MessageSender_Concurrency_ServiceDesc, srvs)
 }
 
@@ -116,40 +120,14 @@ func _MessageSender_Concurrency_Send_Handler(srv interface{}, ctx context.Contex
 		return nil, err
 	}
 	if interceptor == nil {
-		pool := srv.(*threadpool.ThreadPool)
-		task := &taskSend{
-			in: in,
-		}
-		future, err := pool.ExecuteFuture(task)
-		if err != nil {
-			return nil, err
-		}
-		for {
-			if future.IsDone() {
-				break
-			}
-		}
-		return MessageResponse{Result: future.Get().(int32)}, nil
+		return srv.(MessageSenderServerConcurrency).Send(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/MessageSender/Send",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		pool := srv.(*threadpool.ThreadPool)
-		task := &taskSend{
-			in: in,
-		}
-		future, err := pool.ExecuteFuture(task)
-		if err != nil {
-			return nil, err
-		}
-		for {
-			if future.IsDone() {
-				break
-			}
-		}
-		return MessageResponse{Result: future.Get().(int32)}, nil
+		return srv.(MessageSenderServerConcurrency).Send(ctx, req.(*MessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -159,7 +137,7 @@ func _MessageSender_Concurrency_Send_Handler(srv interface{}, ctx context.Contex
 // and not to be introspected or modified (even as a copy)
 var MessageSender_Concurrency_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "MessageSender",
-	HandlerType: ([]*MessageSenderServer)(nil),
+	HandlerType: ([]*MessageSenderServerConcurrency)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Send",
@@ -169,41 +147,3 @@ var MessageSender_Concurrency_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "test.proto",
 }
-
-type taskSend struct {
-	in *MessageRequest
-}
-
-func (t *taskSend) Call() interface{} {
-	firstNum := t.in.FirstNum
-	secondNum := t.in.SecondNum
-
-	return firstNum ^ secondNum
-}
-
-//type ServerPool struct {
-//	num  int
-//	srvs []*chan MessageSenderServer
-//}
-//
-//func NewServerPool(num int, ctx context.Context, req *MessageRequest) *ServerPool {
-//	srvPool := &ServerPool{
-//		num: num,
-//	}
-//	for i := 0; i < num; i++ {
-//		c := make(chan MessageSenderServer)
-//		srvPool.srvs = append(srvPool.srvs, &c)
-//		go func(sender *chan MessageSenderServer) {
-//			for {
-//				select {
-//				case f := <-*sender:
-//					{
-//						f.Send(ctx, req)
-//					}
-//				default:
-//				}
-//			}
-//		}(&c)
-//	}
-//	return srvPool
-//}

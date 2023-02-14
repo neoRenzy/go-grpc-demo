@@ -38,3 +38,4 @@ libprotoc v3.21.12
 ###grpc测试结果
 串行处理时间 : 6.0399 秒
 并发处理时间: 9.7539 秒
+oneThreadTest cost time: 9.0962 秒

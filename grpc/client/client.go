@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	conn, err := grpc.Dial("127.0.0.1:8002", grpc.WithInsecure())
+	conn, err := grpc.Dial("127.0.0.1:8081", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -21,7 +21,7 @@ func main() {
 
 	oneThreadTest(client)
 
-	fiveThreadsTest(client)
+	//fiveThreadsTest(client)
 }
 
 func oneThreadTest(client pb.MessageSenderClient) {
