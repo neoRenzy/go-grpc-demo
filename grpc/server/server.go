@@ -50,8 +50,7 @@ func oneThreadHandler() {
 }
 
 func fiveThreadHandler() {
-	pool := threadpool.NewThreadPool(5, 100)
-	defer pool.Close()
+	pool := threadpool.NewThreadPool(5, 20000)
 
 	srv := grpc.NewServer()
 	pb.RegisterConcurrencyMessageSenderServer(srv, pool)

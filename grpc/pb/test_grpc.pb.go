@@ -115,13 +115,22 @@ func _MessageSender_Concurrency_Send_Handler(srv interface{}, ctx context.Contex
 	if err := dec(in); err != nil {
 		return nil, err
 	}
+	var res int32
 	if interceptor == nil {
 		pool := srv.(*threadpool.ThreadPool)
 		task := &taskSend{
 			in: in,
 		}
-		err := pool.Execute(task)
-		return MessageResponse{Result: task.result}, err
+		future, err := pool.ExecuteFuture(task)
+		if err != nil {
+			return nil, err
+		}
+		for {
+			if future.IsDone() {
+				break
+			}
+		}
+		return MessageResponse{Result: future.Get().(int32)}, nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
@@ -132,8 +141,16 @@ func _MessageSender_Concurrency_Send_Handler(srv interface{}, ctx context.Contex
 		task := &taskSend{
 			in: in,
 		}
-		err := pool.Execute(task)
-		return MessageResponse{Result: task.result}, err
+		future, err := pool.ExecuteFuture(task)
+		if err != nil {
+			return nil, err
+		}
+		for {
+			if future.IsDone() {
+				break
+			}
+		}
+		return MessageResponse{Result: future.Get().(int32)}, nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -155,15 +172,14 @@ var MessageSender_Concurrency_ServiceDesc = grpc.ServiceDesc{
 }
 
 type taskSend struct {
-	in     *MessageRequest
-	result int32
+	in *MessageRequest
 }
 
-func (t *taskSend) Run() {
+func (t *taskSend) Call() interface{} {
 	firstNum := t.in.FirstNum
 	secondNum := t.in.SecondNum
 
-	t.result = firstNum ^ secondNum
+	return firstNum ^ secondNum
 }
 
 //type ServerPool struct {
