@@ -115,7 +115,6 @@ func _MessageSender_Concurrency_Send_Handler(srv interface{}, ctx context.Contex
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	var res int32
 	if interceptor == nil {
 		pool := srv.(*threadpool.ThreadPool)
 		task := &taskSend{
