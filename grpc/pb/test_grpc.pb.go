@@ -50,11 +50,6 @@ type MessageSenderServer interface {
 	mustEmbedUnimplementedMessageSenderServer()
 }
 
-type MessageSenderServerConcurrency interface {
-	Send(context.Context, *MessageRequest) (*MessageResponse, error)
-	mustEmbedUnimplementedMessageSenderServer()
-}
-
 // UnimplementedMessageSenderServer must be embedded to have forward compatible implementations.
 type UnimplementedMessageSenderServer struct {
 }
@@ -103,45 +98,6 @@ var MessageSender_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Send",
 			Handler:    _MessageSender_Send_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "test.proto",
-}
-
-// 并发处理server注册
-func RegisterConcurrencyMessageSenderServer(s grpc.ServiceRegistrar, srvs MessageSenderServerConcurrency) {
-	s.RegisterService(&MessageSender_Concurrency_ServiceDesc, srvs)
-}
-
-func _MessageSender_Concurrency_Send_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MessageSenderServerConcurrency).Send(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/MessageSender/Send",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessageSenderServerConcurrency).Send(ctx, req.(*MessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// MessageSender_ServiceDesc is the grpc.ServiceDesc for MessageSender service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var MessageSender_Concurrency_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "MessageSender",
-	HandlerType: ([]*MessageSenderServerConcurrency)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Send",
-			Handler:    _MessageSender_Concurrency_Send_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
