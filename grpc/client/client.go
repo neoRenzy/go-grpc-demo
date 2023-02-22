@@ -6,6 +6,7 @@ import (
 	"github.com/shettyh/threadpool"
 	"go-grpc-demo/grpc/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"sync"
 	"time"
@@ -27,7 +28,7 @@ func main() {
 }
 
 func NewClient() (client pb.MessageSenderClient) {
-	conn, err := grpc.Dial("127.0.0.1:8080", grpc.WithInsecure())
+	conn, err := grpc.Dial("127.0.0.1:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
