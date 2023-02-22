@@ -18,23 +18,23 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// MessageSenderClient is the client API for MessageSender service.
+// GprcMessageSenderClient is the client API for MessageSender service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type MessageSenderClient interface {
+type GprcMessageSenderClient interface {
 	Send(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageResponse, error)
 	Close()
 }
 
-type messageSenderClient struct {
+type grpcMessageSenderClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewMessageSenderClient(cc *grpc.ClientConn) MessageSenderClient {
-	return &messageSenderClient{cc}
+func NewGRpcMessageSenderClient(cc *grpc.ClientConn) GprcMessageSenderClient {
+	return &grpcMessageSenderClient{cc}
 }
 
-func (c *messageSenderClient) Send(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageResponse, error) {
+func (c *grpcMessageSenderClient) Send(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageResponse, error) {
 	out := new(MessageResponse)
 	err := c.cc.Invoke(ctx, "/MessageSender/Send", in, out, opts...)
 	if err != nil {
@@ -43,7 +43,7 @@ func (c *messageSenderClient) Send(ctx context.Context, in *MessageRequest, opts
 	return out, nil
 }
 
-func (c *messageSenderClient) Close() {
+func (c *grpcMessageSenderClient) Close() {
 	c.cc.Close()
 }
 

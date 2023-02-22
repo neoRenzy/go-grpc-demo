@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/shettyh/threadpool"
-	"go-grpc-demo/grpc/pb"
+	"go-grpc-demo/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
@@ -27,12 +27,12 @@ func main() {
 	//threadPoolTest()
 }
 
-func NewClient() (client pb.MessageSenderClient) {
+func NewClient() (client pb.GprcMessageSenderClient) {
 	conn, err := grpc.Dial("127.0.0.1:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
-	client = pb.NewMessageSenderClient(conn)
+	client = pb.NewGRpcMessageSenderClient(conn)
 	return
 }
 
@@ -106,7 +106,7 @@ func threadPoolTest() {
 }
 
 type XORNumTask struct {
-	client pb.MessageSenderClient
+	client pb.GprcMessageSenderClient
 }
 
 func (t XORNumTask) Call() interface{} {
