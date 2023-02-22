@@ -32,13 +32,13 @@ func NewClient() (client pb.MessageSenderClient) {
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
-
 	client = pb.NewMessageSenderClient(conn)
 	return
 }
 
 func oneThreadTest() {
 	client := NewClient()
+	defer client.Close()
 
 	startTime := time.Now()
 	for i := 0; i < MAX_WORK_NUM; i++ {
@@ -60,10 +60,11 @@ func fiveThreadsTest() {
 	for core := 0; core < MAX_WORKER; core++ {
 		wg.Add(1)
 		go func() {
-			defer wg.Done()
-
 			client := NewClient()
-			for i := 0; i < MAX_WORK_NUM; i++ {
+			defer wg.Done()
+			defer client.Close()
+
+			for i := 0; i < MAX_WORK_NUM/MAX_WORKER; i++ {
 				_, err := client.Send(context.Background(), &pb.MessageRequest{
 					FirstNum:  FirstNum,
 					SecondNum: SecondNum,
@@ -87,8 +88,10 @@ func threadPoolTest() {
 
 	futures := make([]*threadpool.Future, MAX_WORK_NUM)
 	for i := 0; i < MAX_WORK_NUM; i++ {
+		client := NewClient()
+
 		future, _ := threadPool.ExecuteFuture(&XORNumTask{
-			client: NewClient(),
+			client: client,
 		})
 		futures[i] = future
 	}

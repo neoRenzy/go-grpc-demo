@@ -23,13 +23,14 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MessageSenderClient interface {
 	Send(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageResponse, error)
+	Close()
 }
 
 type messageSenderClient struct {
-	cc grpc.ClientConnInterface
+	cc *grpc.ClientConn
 }
 
-func NewMessageSenderClient(cc grpc.ClientConnInterface) MessageSenderClient {
+func NewMessageSenderClient(cc *grpc.ClientConn) MessageSenderClient {
 	return &messageSenderClient{cc}
 }
 
@@ -40,6 +41,10 @@ func (c *messageSenderClient) Send(ctx context.Context, in *MessageRequest, opts
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *messageSenderClient) Close() {
+	c.cc.Close()
 }
 
 // MessageSenderServer is the server API for MessageSender service.
