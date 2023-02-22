@@ -19,22 +19,26 @@ const (
 )
 
 func main() {
+	oneThreadTest()
+	time.Sleep(time.Second * 10)
+	fiveThreadsTest()
+	time.Sleep(time.Second * 10)
+	threadPoolTest()
+}
+
+func NewClient() (client pb.MessageSenderClient) {
 	conn, err := grpc.Dial("127.0.0.1:8080", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
-	defer conn.Close()
 
-	client := pb.NewMessageSenderClient(conn)
-
-	oneThreadTest(client)
-	time.Sleep(time.Second * 10)
-	fiveThreadsTest(client)
-	time.Sleep(time.Second * 10)
-	threadPoolTest(client)
+	client = pb.NewMessageSenderClient(conn)
+	return
 }
 
-func oneThreadTest(client pb.MessageSenderClient) {
+func oneThreadTest() {
+	client := NewClient()
+
 	startTime := time.Now()
 	for i := 0; i < MAX_WORK_NUM; i++ {
 		_, err := client.Send(context.Background(), &pb.MessageRequest{
@@ -49,13 +53,15 @@ func oneThreadTest(client pb.MessageSenderClient) {
 	log.Println(fmt.Sprintf("oneThreadTest cost time: %.4f 秒", endTime.Sub(startTime).Seconds()))
 }
 
-func fiveThreadsTest(client pb.MessageSenderClient) {
+func fiveThreadsTest() {
 	startTime := time.Now()
 	wg := sync.WaitGroup{}
 	for core := 0; core < MAX_WORKER; core++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+
+			client := NewClient()
 			for i := 0; i < MAX_WORK_NUM; i++ {
 				_, err := client.Send(context.Background(), &pb.MessageRequest{
 					FirstNum:  FirstNum,
@@ -72,7 +78,7 @@ func fiveThreadsTest(client pb.MessageSenderClient) {
 	log.Println(fmt.Sprintf("fiveThreadsTest cost time: %.4f 秒", endTime.Sub(startTime).Seconds()))
 }
 
-func threadPoolTest(client pb.MessageSenderClient) {
+func threadPoolTest() {
 	startTime := time.Now()
 
 	threadPool := threadpool.NewThreadPool(MAX_WORKER, MAX_WORK_NUM)
@@ -80,7 +86,9 @@ func threadPoolTest(client pb.MessageSenderClient) {
 
 	futures := make([]*threadpool.Future, MAX_WORK_NUM)
 	for i := 0; i < MAX_WORK_NUM; i++ {
-		future, _ := threadPool.ExecuteFuture(&XORNumTask{})
+		future, _ := threadPool.ExecuteFuture(&XORNumTask{
+			client: NewClient(),
+		})
 		futures[i] = future
 	}
 	for {
