@@ -44,5 +44,3 @@ func (MessageSenderServerImpl) Send(context context.Context, request *pb.Message
 	}
 	return resp, nil
 }
-
-// test
