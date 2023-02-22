@@ -23,8 +23,8 @@ func main() {
 	oneThreadTest()
 	time.Sleep(time.Second * 10)
 	fiveThreadsTest()
-	time.Sleep(time.Second * 10)
-	threadPoolTest()
+	//time.Sleep(time.Second * 10)
+	//threadPoolTest()
 }
 
 func NewClient() (client pb.MessageSenderClient) {
