@@ -27,7 +27,7 @@ func main() {
 	//threadPoolTest()
 }
 
-func NewClient() (client pb.GprcMessageSenderClient) {
+func NewGrpcClient() (client pb.GprcMessageSenderClient) {
 	conn, err := grpc.Dial("127.0.0.1:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
@@ -37,7 +37,7 @@ func NewClient() (client pb.GprcMessageSenderClient) {
 }
 
 func oneThreadTest() {
-	client := NewClient()
+	client := NewGrpcClient()
 	defer client.Close()
 
 	startTime := time.Now()
@@ -60,7 +60,7 @@ func fiveThreadsTest() {
 	for core := 0; core < MAX_WORKER; core++ {
 		wg.Add(1)
 		go func() {
-			client := NewClient()
+			client := NewGrpcClient()
 			defer wg.Done()
 			defer client.Close()
 
@@ -88,7 +88,7 @@ func threadPoolTest() {
 
 	futures := make([]*threadpool.Future, MAX_WORK_NUM)
 	for i := 0; i < MAX_WORK_NUM; i++ {
-		client := NewClient()
+		client := NewGrpcClient()
 
 		future, _ := threadPool.ExecuteFuture(&XORNumTask{
 			client: client,
