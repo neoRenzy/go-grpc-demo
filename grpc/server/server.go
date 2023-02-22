@@ -13,7 +13,7 @@ import (
 func main() {
 	// port:8080
 	srv := grpc.NewServer()
-	pb.RegisterMessageSenderServer(srv, MessageSenderServerImpl{})
+	pb.RegisterGprcMessageSenderServer(srv, MessageSenderServerImpl{})
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -28,7 +28,7 @@ func main() {
 }
 
 type MessageSenderServerImpl struct {
-	*pb.UnimplementedMessageSenderServer
+	*pb.UnimplementedGprcMessageSenderServer
 }
 
 func (MessageSenderServerImpl) Send(context context.Context, request *pb.MessageRequest) (*pb.MessageResponse, error) {

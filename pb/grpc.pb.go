@@ -47,62 +47,62 @@ func (c *grpcMessageSenderClient) Close() {
 	c.cc.Close()
 }
 
-// MessageSenderServer is the server API for MessageSender service.
-// All implementations must embed UnimplementedMessageSenderServer
+// GrpcMessageSenderServer is the server API for MessageSender service.
+// All implementations must embed UnimplementedGprcMessageSenderServer
 // for forward compatibility
-type MessageSenderServer interface {
+type GrpcMessageSenderServer interface {
 	Send(context.Context, *MessageRequest) (*MessageResponse, error)
 	mustEmbedUnimplementedMessageSenderServer()
 }
 
-// UnimplementedMessageSenderServer must be embedded to have forward compatible implementations.
-type UnimplementedMessageSenderServer struct {
+// UnimplementedGprcMessageSenderServer must be embedded to have forward compatible implementations.
+type UnimplementedGprcMessageSenderServer struct {
 }
 
-func (UnimplementedMessageSenderServer) Send(context.Context, *MessageRequest) (*MessageResponse, error) {
+func (UnimplementedGprcMessageSenderServer) Send(context.Context, *MessageRequest) (*MessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Send not implemented")
 }
-func (UnimplementedMessageSenderServer) mustEmbedUnimplementedMessageSenderServer() {}
+func (UnimplementedGprcMessageSenderServer) mustEmbedUnimplementedMessageSenderServer() {}
 
-// UnsafeMessageSenderServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to MessageSenderServer will
+// GprcUnsafeMessageSenderServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to GrpcMessageSenderServer will
 // result in compilation errors.
-type UnsafeMessageSenderServer interface {
+type GprcUnsafeMessageSenderServer interface {
 	mustEmbedUnimplementedMessageSenderServer()
 }
 
-func RegisterMessageSenderServer(s grpc.ServiceRegistrar, srv MessageSenderServer) {
-	s.RegisterService(&MessageSender_ServiceDesc, srv)
+func RegisterGprcMessageSenderServer(s grpc.ServiceRegistrar, srv GrpcMessageSenderServer) {
+	s.RegisterService(&Grpc_MessageSender_ServiceDesc, srv)
 }
 
-func _MessageSender_Send_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Grpc_MessageSender_Send_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MessageRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MessageSenderServer).Send(ctx, in)
+		return srv.(GrpcMessageSenderServer).Send(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/MessageSender/Send",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessageSenderServer).Send(ctx, req.(*MessageRequest))
+		return srv.(GrpcMessageSenderServer).Send(ctx, req.(*MessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// MessageSender_ServiceDesc is the grpc.ServiceDesc for MessageSender service.
+// Grpc_MessageSender_ServiceDesc is the grpc.ServiceDesc for MessageSender service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var MessageSender_ServiceDesc = grpc.ServiceDesc{
+var Grpc_MessageSender_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "MessageSender",
-	HandlerType: (*MessageSenderServer)(nil),
+	HandlerType: (*GrpcMessageSenderServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Send",
-			Handler:    _MessageSender_Send_Handler,
+			Handler:    _Grpc_MessageSender_Send_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
