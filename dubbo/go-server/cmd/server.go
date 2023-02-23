@@ -27,7 +27,7 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/config"
 	_ "dubbo.apache.org/dubbo-go/v3/imports"
 
-	"helloworld/api"
+	"go-rpc-demo/dubbo/api"
 )
 
 type GreeterProvider struct {

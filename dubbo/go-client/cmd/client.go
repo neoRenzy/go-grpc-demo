@@ -19,14 +19,14 @@ package main
 
 import (
 	"context"
+	"log"
 )
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
 	"dubbo.apache.org/dubbo-go/v3/config"
 	_ "dubbo.apache.org/dubbo-go/v3/imports"
 
-	"helloworld/api"
+	"go-rpc-demo/dubbo/api"
 )
 
 // export DUBBO_GO_CONFIG_PATH=./go-client/conf/dubbogo.yaml
@@ -45,7 +45,7 @@ func main() {
 		panic(err)
 	}
 
-	logger.Info("start to test dubbo")
+	log.Print("start to test dubbo")
 	req := &api.MessageRequest{
 		FirstNum:  11,
 		SecondNum: 12,
@@ -54,9 +54,9 @@ func main() {
 	for i := 0; i < 5; i++ {
 		reply, err := grpcGreeterImpl.Send(ctx, req)
 		if err != nil {
-			logger.Error(err)
+			log.Fatal(err)
 		}
-		logger.Infof("client response result: %v\n,time : %d", reply, i)
+		log.Printf("client response result: %v\n,time : %d", reply, i)
 	}
 	//reply, err = grpcGreeterImpl2.Send(context.Background(), req)
 	//if err != nil {

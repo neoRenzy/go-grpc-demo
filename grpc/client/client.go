@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/shettyh/threadpool"
-	"go-grpc-demo/pb"
+	"go-rpc-demo/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
