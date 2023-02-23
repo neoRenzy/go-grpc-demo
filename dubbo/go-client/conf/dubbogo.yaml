@@ -5,3 +5,19 @@ dubbo:
         protocol: tri
         url: "tri://localhost:20000"
         interface: "" # read from pb
+      MessageSenderClientImpl2:
+        protocol: tri
+        url: "tri://localhost:20000"
+        interface: "" # read from pb
+      MessageSenderClientImpl3:
+        protocol: tri
+        url: "tri://localhost:20000"
+        interface: "" # read from pb
+      MessageSenderClientImpl4:
+        protocol: tri
+        url: "tri://localhost:20000"
+        interface: "" # read from pb
+      MessageSenderClientImpl5:
+        protocol: tri
+        url: "tri://localhost:20000"
+        interface: "" # read from pb

@@ -47,6 +47,54 @@ func (c *MessageSenderClientImpl) XXX_InterfaceName() string {
 	return "MessageSender"
 }
 
+type MessageSenderClientImpl2 struct {
+	Send func(ctx context.Context, in *MessageRequest) (*MessageResponse, error)
+}
+
+func (c *MessageSenderClientImpl2) GetDubboStub(cc *triple.TripleConn) MessageSenderClient {
+	return NewMessageSenderClient(cc)
+}
+
+func (c *MessageSenderClientImpl2) XXX_InterfaceName() string {
+	return "MessageSender"
+}
+
+type MessageSenderClientImpl3 struct {
+	Send func(ctx context.Context, in *MessageRequest) (*MessageResponse, error)
+}
+
+func (c *MessageSenderClientImpl3) GetDubboStub(cc *triple.TripleConn) MessageSenderClient {
+	return NewMessageSenderClient(cc)
+}
+
+func (c *MessageSenderClientImpl3) XXX_InterfaceName() string {
+	return "MessageSender"
+}
+
+type MessageSenderClientImpl4 struct {
+	Send func(ctx context.Context, in *MessageRequest) (*MessageResponse, error)
+}
+
+func (c *MessageSenderClientImpl4) GetDubboStub(cc *triple.TripleConn) MessageSenderClient {
+	return NewMessageSenderClient(cc)
+}
+
+func (c *MessageSenderClientImpl4) XXX_InterfaceName() string {
+	return "MessageSender"
+}
+
+type MessageSenderClientImpl5 struct {
+	Send func(ctx context.Context, in *MessageRequest) (*MessageResponse, error)
+}
+
+func (c *MessageSenderClientImpl5) GetDubboStub(cc *triple.TripleConn) MessageSenderClient {
+	return NewMessageSenderClient(cc)
+}
+
+func (c *MessageSenderClientImpl5) XXX_InterfaceName() string {
+	return "MessageSender"
+}
+
 func NewMessageSenderClient(cc *triple.TripleConn) MessageSenderClient {
 	return &messageSenderClient{cc}
 }

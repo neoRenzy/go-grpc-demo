@@ -32,7 +32,15 @@ import (
 // export DUBBO_GO_CONFIG_PATH=./go-client/conf/dubbogo.yaml
 func main() {
 	grpcGreeterImpl := &api.MessageSenderClientImpl{}
+	grpcGreeterImpl2 := &api.MessageSenderClientImpl2{}
+	grpcGreeterImpl3 := &api.MessageSenderClientImpl3{}
+	grpcGreeterImpl4 := &api.MessageSenderClientImpl4{}
+	grpcGreeterImpl5 := &api.MessageSenderClientImpl5{}
 	config.SetConsumerService(grpcGreeterImpl)
+	config.SetConsumerService(grpcGreeterImpl2)
+	config.SetConsumerService(grpcGreeterImpl3)
+	config.SetConsumerService(grpcGreeterImpl4)
+	config.SetConsumerService(grpcGreeterImpl5)
 	if err := config.Load(); err != nil {
 		panic(err)
 	}
@@ -42,9 +50,17 @@ func main() {
 		FirstNum:  11,
 		SecondNum: 12,
 	}
-	reply, err := grpcGreeterImpl.Send(context.Background(), req)
-	if err != nil {
-		logger.Error(err)
+	ctx := context.Background()
+	for i := 0; i < 5; i++ {
+		reply, err := grpcGreeterImpl.Send(ctx, req)
+		if err != nil {
+			logger.Error(err)
+		}
+		logger.Infof("client response result: %v\n,time : %d", reply, i)
 	}
-	logger.Infof("client response result: %v\n", reply)
+	//reply, err = grpcGreeterImpl2.Send(context.Background(), req)
+	//if err != nil {
+	//	logger.Error(err)
+	//}
+	//logger.Infof("client2 response result: %v\n", reply)
 }
