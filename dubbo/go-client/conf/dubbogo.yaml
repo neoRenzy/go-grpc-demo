@@ -1,7 +1,7 @@
 dubbo:
   consumer:
     references:
-      GreeterClientImpl:
+      MessageSenderClientImpl:
         protocol: tri
         url: "tri://localhost:20000"
         interface: "" # read from pb

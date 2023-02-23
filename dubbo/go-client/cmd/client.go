@@ -29,10 +29,9 @@ import (
 	"helloworld/api"
 )
 
-var grpcGreeterImpl = new(api.MessageSenderClientImpl)
-
-// export DUBBO_GO_CONFIG_PATH= PATH_TO_SAMPLES/helloworld/go-client/conf/dubbogo.yaml
+// export DUBBO_GO_CONFIG_PATH=./go-client/conf/dubbogo.yaml
 func main() {
+	grpcGreeterImpl := &api.MessageSenderClientImpl{}
 	config.SetConsumerService(grpcGreeterImpl)
 	if err := config.Load(); err != nil {
 		panic(err)

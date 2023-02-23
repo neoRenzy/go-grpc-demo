@@ -48,7 +48,7 @@ func (s *GreeterProvider) Send(ctx context.Context, request *api.MessageRequest)
 	return resp, nil
 }
 
-// export DUBBO_GO_CONFIG_PATH= PATH_TO_SAMPLES/helloworld/go-server/conf/dubbogo.yaml
+// export DUBBO_GO_CONFIG_PATH=./go-server/conf/dubbogo.yaml
 func main() {
 	config.SetProviderService(&GreeterProvider{})
 	if err := config.Load(); err != nil {
