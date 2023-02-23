@@ -21,10 +21,14 @@ const (
 
 func main() {
 	oneThreadTest()
+
 	time.Sleep(time.Second * 10)
+
 	fiveThreadsTest()
-	//time.Sleep(time.Second * 10)
-	//threadPoolTest()
+
+	time.Sleep(time.Second * 10)
+
+	threadPoolTest()
 }
 
 func NewGrpcClient() (client pb.GprcMessageSenderClient) {
@@ -88,11 +92,7 @@ func threadPoolTest() {
 
 	futures := make([]*threadpool.Future, MAX_WORK_NUM)
 	for i := 0; i < MAX_WORK_NUM; i++ {
-		client := NewGrpcClient()
-
-		future, _ := threadPool.ExecuteFuture(&XORNumTask{
-			client: client,
-		})
+		future, _ := threadPool.ExecuteFuture(&XORNumTask{})
 		futures[i] = future
 	}
 	for {
@@ -105,17 +105,18 @@ func threadPoolTest() {
 	log.Println(fmt.Sprintf("threadPoolTest cost time: %.4f 秒", endTime.Sub(startTime).Seconds()))
 }
 
-type XORNumTask struct {
-	client pb.GprcMessageSenderClient
-}
+type XORNumTask struct{}
 
 func (t XORNumTask) Call() interface{} {
-	_, err := t.client.Send(context.Background(), &pb.MessageRequest{
+	client := NewGrpcClient()
+	defer client.Close()
+
+	res, err := client.Send(context.Background(), &pb.MessageRequest{
 		FirstNum:  FirstNum,
 		SecondNum: SecondNum,
 	})
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
-	return nil
+	return res
 }
