@@ -27,25 +27,22 @@ import (
 )
 
 import (
-	perrors "github.com/pkg/errors"
-)
+	"github.com/dubbogo/gost/log/logger"
 
-import (
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
+	perrors "github.com/pkg/errors"
 )
 
 // RPCService the type alias of interface{}
 type RPCService = interface{}
 
-// ReferencedRPCService
-// rpc service interface
+// ReferencedRPCService is the rpc service interface which wraps base Reference method.
+//
+// Reference method refers rpc service id or reference id.
 type ReferencedRPCService interface {
-	// Reference:
-	// rpc service id or reference id
 	Reference() string
 }
 
-// RPCService the type alias of interface{}
+// TriplePBService is  the type alias of interface{}
 type TriplePBService interface {
 	XXX_InterfaceName() string
 }
@@ -78,7 +75,6 @@ func GetReference(service RPCService) string {
 
 // AsyncCallbackService callback interface for async
 type AsyncCallbackService interface {
-	// Callback: callback
 	CallBack(response CallbackResponse)
 }
 
@@ -88,10 +84,6 @@ type CallbackResponse interface{}
 // AsyncCallback async callback method
 type AsyncCallback func(response CallbackResponse)
 
-// for lowercase func
-// func MethodMapper() map[string][string] {
-//     return map[string][string]{}
-// }
 const (
 	METHOD_MAPPER = "MethodMapper"
 )
@@ -107,10 +99,6 @@ var (
 		interfaceMap: make(map[string][]*Service),
 	}
 )
-
-//////////////////////////
-// info of method
-//////////////////////////
 
 // MethodType is description of service method.
 type MethodType struct {
@@ -148,10 +136,6 @@ func (m *MethodType) SuiteContext(ctx context.Context) reflect.Value {
 	return reflect.Zero(m.ctxType)
 }
 
-//////////////////////////
-// info of service interface
-//////////////////////////
-
 // Service is description of service
 type Service struct {
 	name     string
@@ -180,10 +164,6 @@ func (s *Service) Rcvr() reflect.Value {
 	return s.rcvr
 }
 
-//////////////////////////
-// serviceMap
-//////////////////////////
-
 type serviceMap struct {
 	mutex        sync.RWMutex                   // protects the serviceMap
 	serviceMap   map[string]map[string]*Service // protocol -> service name -> service
@@ -196,7 +176,7 @@ func (sm *serviceMap) GetService(protocol, interfaceName, group, version string)
 	return sm.GetServiceByServiceKey(protocol, serviceKey)
 }
 
-// GetService gets a service definition by protocol and service key
+// GetServiceByServiceKey gets a service definition by protocol and service key
 func (sm *serviceMap) GetServiceByServiceKey(protocol, serviceKey string) *Service {
 	sm.mutex.RLock()
 	defer sm.mutex.RUnlock()

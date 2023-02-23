@@ -31,7 +31,7 @@ import (
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
-	"dubbo.apache.org/dubbo-go/v3/config/interfaces"
+	"dubbo.apache.org/dubbo-go/v3/common/extension"
 )
 
 var validate *validator.Validate
@@ -90,8 +90,8 @@ func removeDuplicateElement(items []string) []string {
 	return result
 }
 
-// translateRegistryIds string "nacos,zk" => ["nacos","zk"]
-func translateRegistryIds(registryIds []string) []string {
+// translateIds string "nacos,zk" => ["nacos","zk"]
+func translateIds(registryIds []string) []string {
 	ids := make([]string, 0)
 	for _, id := range registryIds {
 
@@ -113,6 +113,10 @@ func verify(s interface{}) error {
 }
 
 // clientNameID unique identifier id for client
-func clientNameID(config interfaces.Config, protocol, address string) string {
+func clientNameID(config extension.Config, protocol, address string) string {
 	return strings.Join([]string{config.Prefix(), protocol, address}, "-")
+}
+
+func isValid(addr string) bool {
+	return addr != "" && addr != constant.NotAvailable
 }

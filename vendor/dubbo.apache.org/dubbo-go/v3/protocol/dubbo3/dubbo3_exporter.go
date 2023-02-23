@@ -22,13 +22,14 @@ import (
 )
 
 import (
+	"github.com/dubbogo/gost/log/logger"
+
 	tripleConstant "github.com/dubbogo/triple/pkg/common/constant"
 )
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
 	"dubbo.apache.org/dubbo-go/v3/protocol"
 )
 
@@ -48,13 +49,13 @@ func NewDubboExporter(key string, invoker protocol.Invoker, exporterMap *sync.Ma
 }
 
 // Unexport unexport dubbo3 service exporter.
-func (de *DubboExporter) Unexport() {
+func (de *DubboExporter) UnExport() {
 	url := de.GetInvoker().GetURL()
 	interfaceName := url.GetParam(constant.InterfaceKey, "")
-	de.BaseExporter.Unexport()
+	de.BaseExporter.UnExport()
 	err := common.ServiceMap.UnRegister(interfaceName, tripleConstant.TRIPLE, url.ServiceKey())
 	if err != nil {
-		logger.Errorf("[DubboExporter.Unexport] error: %v", err)
+		logger.Errorf("[DubboExporter.UnExport] error: %v", err)
 	}
 	de.serviceMap.Delete(interfaceName)
 }

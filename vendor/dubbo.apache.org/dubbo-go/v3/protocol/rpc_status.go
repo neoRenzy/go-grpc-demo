@@ -24,13 +24,14 @@ import (
 )
 
 import (
+	"github.com/dubbogo/gost/log/logger"
+
 	uberAtomic "go.uber.org/atomic"
 )
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
 )
 
 var (
@@ -182,7 +183,7 @@ func CurrentTimeMillis() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
-// Destroy is used to clean all status
+// CleanAllStatus is used to clean all status
 func CleanAllStatus() {
 	delete1 := func(key, _ interface{}) bool {
 		methodStatistics.Delete(key)

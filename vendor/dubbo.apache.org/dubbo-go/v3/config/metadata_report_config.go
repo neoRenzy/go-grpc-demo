@@ -18,6 +18,8 @@
 package config
 
 import (
+	"github.com/dubbogo/gost/log/logger"
+
 	perrors "github.com/pkg/errors"
 )
 
@@ -25,7 +27,6 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
 	"dubbo.apache.org/dubbo-go/v3/config/instance"
 )
 
@@ -136,49 +137,40 @@ type MetadataReportConfigBuilder struct {
 	metadataReportConfig *MetadataReportConfig
 }
 
-// nolint
 func NewMetadataReportConfigBuilder() *MetadataReportConfigBuilder {
 	return &MetadataReportConfigBuilder{metadataReportConfig: &MetadataReportConfig{}}
 }
 
-// nolint
 func (mrcb *MetadataReportConfigBuilder) SetProtocol(protocol string) *MetadataReportConfigBuilder {
 	mrcb.metadataReportConfig.Protocol = protocol
 	return mrcb
 }
 
-// nolint
 func (mrcb *MetadataReportConfigBuilder) SetAddress(address string) *MetadataReportConfigBuilder {
 	mrcb.metadataReportConfig.Address = address
 	return mrcb
 }
 
-// nolint
 func (mrcb *MetadataReportConfigBuilder) SetUsername(username string) *MetadataReportConfigBuilder {
 	mrcb.metadataReportConfig.Username = username
 	return mrcb
 }
 
-// nolint
 func (mrcb *MetadataReportConfigBuilder) SetPassword(password string) *MetadataReportConfigBuilder {
 	mrcb.metadataReportConfig.Password = password
 	return mrcb
 }
 
-// nolint
 func (mrcb *MetadataReportConfigBuilder) SetTimeout(timeout string) *MetadataReportConfigBuilder {
 	mrcb.metadataReportConfig.Timeout = timeout
 	return mrcb
 }
 
-// nolint
 func (mrcb *MetadataReportConfigBuilder) SetGroup(group string) *MetadataReportConfigBuilder {
 	mrcb.metadataReportConfig.Group = group
 	return mrcb
 }
 
-// nolint
 func (mrcb *MetadataReportConfigBuilder) Build() *MetadataReportConfig {
-	// TODO Init
 	return mrcb.metadataReportConfig
 }

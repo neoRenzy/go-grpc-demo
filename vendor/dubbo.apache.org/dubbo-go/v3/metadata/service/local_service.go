@@ -50,12 +50,11 @@ type MetadataService interface {
 	GetExportedURLs(serviceInterface string, group string, version string, protocol string) ([]*common.URL, error)
 	// MethodMapper for rename dubbo method name
 	MethodMapper() map[string]string
-	// GetExportedURLs will get the target subscribed url in metadata
-	// the url should be unique
+	// GetSubscribedURLs will get the target subscribed url in metadata the url should be unique
 	GetSubscribedURLs() ([]*common.URL, error)
 	// GetServiceDefinition will get the target service info store in metadata
 	GetServiceDefinition(interfaceName string, group string, version string) (string, error)
-	// GetServiceDefinition will get the target service info store in metadata by service key
+	// GetServiceDefinitionByServiceKey will get the target service info store in metadata by service key
 	GetServiceDefinitionByServiceKey(serviceKey string) (string, error)
 	// RefreshMetadata will refresh the metadata
 	RefreshMetadata(exportedRevision string, subscribedRevision string) (bool, error)
@@ -117,12 +116,7 @@ func NewBaseMetadataServiceProxyFactory(creator MetadataServiceProxyCreator) *Ba
 }
 
 func (b *BaseMetadataServiceProxyFactory) GetProxy(ins registry.ServiceInstance) MetadataService {
-	key := ins.GetServiceName() + "##" + getExportedServicesRevision(ins)
-	if proxy, ok := b.proxies.Load(key); ok {
-		return proxy.(MetadataService)
-	}
-	v, _ := b.proxies.LoadOrStore(key, b.creator(ins))
-	return v.(MetadataService)
+	return b.creator(ins).(MetadataService)
 }
 
 func getExportedServicesRevision(serviceInstance registry.ServiceInstance) string {

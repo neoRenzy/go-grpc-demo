@@ -27,6 +27,8 @@ import (
 )
 
 import (
+	"github.com/dubbogo/gost/log/logger"
+
 	"github.com/dubbogo/grpc-go/metadata"
 
 	tripleConstant "github.com/dubbogo/triple/pkg/common/constant"
@@ -37,7 +39,6 @@ import (
 import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
 	"dubbo.apache.org/dubbo-go/v3/config"
 	"dubbo.apache.org/dubbo-go/v3/protocol"
 	invocation_impl "dubbo.apache.org/dubbo-go/v3/protocol/invocation"
@@ -72,11 +73,11 @@ func NewDubboInvoker(url *common.URL) (*DubboInvoker, error) {
 	interfaceKey := url.GetParam(constant.InterfaceKey, "")
 	consumerService := config.GetConsumerServiceByInterfaceName(interfaceKey)
 
-	dubboSerializaerType := url.GetParam(constant.SerializationKey, constant.ProtobufSerialization)
-	triCodecType := tripleConstant.CodecType(dubboSerializaerType)
+	dubboSerializerType := url.GetParam(constant.SerializationKey, constant.ProtobufSerialization)
+	triCodecType := tripleConstant.CodecType(dubboSerializerType)
 	// new triple client
 	opts := []triConfig.OptionFunction{
-		triConfig.WithClientTimeout(uint32(timeout.Seconds())),
+		triConfig.WithClientTimeout(timeout),
 		triConfig.WithCodecType(triCodecType),
 		triConfig.WithLocation(url.Location),
 		triConfig.WithHeaderAppVersion(url.GetParam(constant.AppVersionKey, "")),
@@ -114,6 +115,14 @@ func NewDubboInvoker(url *common.URL) (*DubboInvoker, error) {
 	}
 
 	triOption := triConfig.NewTripleOption(opts...)
+	tlsConfig := config.GetRootConfig().TLSConfig
+	if tlsConfig != nil {
+		triOption.TLSCertFile = tlsConfig.TLSCertFile
+		triOption.TLSKeyFile = tlsConfig.TLSKeyFile
+		triOption.CACertFile = tlsConfig.CACertFile
+		triOption.TLSServerName = tlsConfig.TLSServerName
+		logger.Infof("Triple Client initialized the TLSConfig configuration")
+	}
 	client, err := triple.NewTripleClient(consumerService, triOption)
 
 	if err != nil {
@@ -180,6 +189,7 @@ func (di *DubboInvoker) Invoke(ctx context.Context, invocation protocol.Invocati
 
 	// append interface id to ctx
 	gRPCMD := make(metadata.MD, 0)
+	// triple will convert attachment value to []string
 	for k, v := range invocation.Attachments() {
 		if str, ok := v.(string); ok {
 			gRPCMD.Set(k, str)
@@ -189,7 +199,7 @@ func (di *DubboInvoker) Invoke(ctx context.Context, invocation protocol.Invocati
 			gRPCMD.Set(k, str...)
 			continue
 		}
-		logger.Warnf("triple attachment value with key = %s is invalid, which should be string or []string", k)
+		logger.Warnf("[Triple Protocol]Triple attachment value with key = %s is invalid, which should be string or []string", k)
 	}
 	ctx = metadata.NewOutgoingContext(ctx, gRPCMD)
 	ctx = context.WithValue(ctx, tripleConstant.InterfaceKey, di.BaseInvoker.GetURL().GetParam(constant.InterfaceKey, ""))
@@ -230,9 +240,9 @@ func (di *DubboInvoker) getTimeout(invocation *invocation_impl.RPCInvocation) ti
 func (di *DubboInvoker) IsAvailable() bool {
 	client := di.getClient()
 	if client != nil {
+		// FIXME here can't check if tcp server is started now!!!
 		return client.IsAvailable()
 	}
-
 	return false
 }
 

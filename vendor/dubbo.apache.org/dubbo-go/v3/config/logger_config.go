@@ -22,7 +22,12 @@ import (
 )
 
 import (
+	getty "github.com/apache/dubbo-getty"
+
 	"github.com/creasty/defaults"
+
+	"github.com/dubbogo/gost/encoding/yaml"
+	"github.com/dubbogo/gost/log/logger"
 
 	"github.com/natefinch/lumberjack"
 
@@ -32,8 +37,6 @@ import (
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
-	"dubbo.apache.org/dubbo-go/v3/common/yaml"
 )
 
 type ZapConfig struct {
@@ -93,6 +96,7 @@ func (lc *LoggerConfig) Init() error {
 	}
 	lc.ZapConfig.setZapConfig(logConf.ZapConfig)
 	logger.InitLogger(logConf)
+	getty.SetLogger(logger.GetLogger())
 	return nil
 }
 
@@ -149,24 +153,28 @@ type LoggerConfigBuilder struct {
 	loggerConfig *LoggerConfig
 }
 
-// nolint
 func NewLoggerConfigBuilder() *LoggerConfigBuilder {
 	return &LoggerConfigBuilder{loggerConfig: &LoggerConfig{}}
 }
 
-// nolint
 func (lcb *LoggerConfigBuilder) SetLumberjackConfig(lumberjackConfig *lumberjack.Logger) *LoggerConfigBuilder {
 	lcb.loggerConfig.LumberjackConfig = lumberjackConfig
 	return lcb
 }
 
-// nolint
 func (lcb *LoggerConfigBuilder) SetZapConfig(zapConfig ZapConfig) *LoggerConfigBuilder {
 	lcb.loggerConfig.ZapConfig = zapConfig
 	return lcb
 }
 
-// nolint
 func (lcb *LoggerConfigBuilder) Build() *LoggerConfig {
 	return lcb.loggerConfig
+}
+
+// DynamicUpdateProperties dynamically update properties.
+func (lc *LoggerConfig) DynamicUpdateProperties(newLoggerConfig *LoggerConfig) {
+	if newLoggerConfig != nil && lc.ZapConfig.Level != newLoggerConfig.ZapConfig.Level {
+		lc.ZapConfig.Level = newLoggerConfig.ZapConfig.Level
+		logger.Infof("LoggerConfig's ZapConfig Level was dynamically updated, new value:%v", lc.ZapConfig.Level)
+	}
 }

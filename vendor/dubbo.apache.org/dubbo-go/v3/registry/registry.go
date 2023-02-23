@@ -21,13 +21,7 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 )
 
-/*
- * -----------------------------------NOTICE---------------------------------------------
- * If there is no special case, you'd better inherit BaseRegistry and implement the
- * FacadeBasedRegistry interface instead of directly implementing the Registry interface.
- * --------------------------------------------------------------------------------------
- */
-// Registry Extension - Registry
+// Registry is the interface that wraps Register、UnRegister、Subscribe and UnSubscribe method.
 type Registry interface {
 	common.Node
 
@@ -64,6 +58,12 @@ type Registry interface {
 	// consumer://10.20.153.10/org.apache.dubbo.foo.BarService?version=1.0.0&application=kylin
 	// listener A listener of the change event, not allowed to be empty
 	UnSubscribe(*common.URL, NotifyListener) error
+
+	// LoadSubscribeInstances Because the subscription is asynchronous,
+	// it may cause the consumer to fail to obtain the provider.
+	// so sync load the instance of the preparing to subscribe service before
+	// formally subscribing.
+	LoadSubscribeInstances(*common.URL, NotifyListener) error
 }
 
 // nolint

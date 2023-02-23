@@ -23,13 +23,10 @@ import (
 
 import (
 	gxset "github.com/dubbogo/gost/container/set"
+	"github.com/dubbogo/gost/gof/observer"
 )
 
-import (
-	"dubbo.apache.org/dubbo-go/v3/common/observer"
-)
-
-// ServiceInstancesChangedListener The Service Discovery Changed Event Listener
+// ServiceInstancesChangedListener is the interface of the Service Discovery Changed Event Listener
 type ServiceInstancesChangedListener interface {
 	// OnEvent on ServiceInstancesChangedEvent the service instances change event
 	OnEvent(e observer.Event) error

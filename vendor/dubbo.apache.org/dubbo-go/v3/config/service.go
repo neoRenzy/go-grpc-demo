@@ -26,16 +26,11 @@ import (
 )
 
 var (
-	// conServicesLock is used to guard conServices map.
-	conServicesLock = sync.Mutex{}
-	conServices     = map[string]common.RPCService{} // service name -> service
-
-	// proServicesLock is used to guard proServices map
-	proServicesLock = sync.Mutex{}
-	proServices     = map[string]common.RPCService{} // service name -> service
-
-	// interfaceNameConServicesLock is used to guard interfaceNameConServices map
-	interfaceNameConServicesLock = sync.Mutex{}
+	conServicesLock              = sync.Mutex{}                   // used to guard conServices map.
+	conServices                  = map[string]common.RPCService{} // service name -> service
+	proServicesLock              = sync.Mutex{}                   // used to guard proServices map
+	proServices                  = map[string]common.RPCService{} // service name -> service
+	interfaceNameConServicesLock = sync.Mutex{}                   // used to guard interfaceNameConServices map
 	interfaceNameConServices     = map[string]common.RPCService{} // interfaceName -> service
 )
 
@@ -67,6 +62,16 @@ func GetProviderService(name string) common.RPCService {
 	proServicesLock.Lock()
 	defer proServicesLock.Unlock()
 	return proServices[name]
+}
+
+// GetProviderServiceMap gets ProviderServiceMap
+func GetProviderServiceMap() map[string]common.RPCService {
+	return proServices
+}
+
+// GetConsumerServiceMap gets ProviderServiceMap
+func GetConsumerServiceMap() map[string]common.RPCService {
+	return conServices
 }
 
 // SetConsumerServiceByInterfaceName is used by pb serialization

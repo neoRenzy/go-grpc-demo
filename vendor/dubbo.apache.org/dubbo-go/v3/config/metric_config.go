@@ -19,6 +19,7 @@ package config
 
 import (
 	"github.com/creasty/defaults"
+	"github.com/dubbogo/gost/log/logger"
 
 	"github.com/pkg/errors"
 )
@@ -32,29 +33,30 @@ import (
 type MetricConfig struct {
 	Mode               string `default:"pull" yaml:"mode" json:"mode,omitempty" property:"mode"` // push or pull,
 	Namespace          string `default:"dubbo" yaml:"namespace" json:"namespace,omitempty" property:"namespace"`
-	Enable             string `default:"true" yaml:"enable" json:"enable,omitempty" property:"enable"`
+	Enable             bool   `default:"true" yaml:"enable" json:"enable,omitempty" property:"enable"`
 	Port               string `default:"9090" yaml:"port" json:"port,omitempty" property:"port"`
 	Path               string `default:"/metrics" yaml:"path" json:"path,omitempty" property:"path"`
 	PushGatewayAddress string `default:"" yaml:"push-gateway-address" json:"push-gateway-address,omitempty" property:"push-gateway-address"`
+	SummaryMaxAge      int64  `default:"600000000000" yaml:"summary-max-age" json:"summary-max-age,omitempty" property:"summary-max-age"`
 }
 
-func (m *MetricConfig) ToReporterConfig() *metrics.ReporterConfig {
+func (mc *MetricConfig) ToReporterConfig() *metrics.ReporterConfig {
 	defaultMetricsReportConfig := metrics.NewReporterConfig()
-	if m.Mode == metrics.ReportModePush {
+	if mc.Mode == metrics.ReportModePush {
 		defaultMetricsReportConfig.Mode = metrics.ReportModePush
 	}
-	if m.Namespace != "" {
-		defaultMetricsReportConfig.Namespace = m.Namespace
+	if mc.Namespace != "" {
+		defaultMetricsReportConfig.Namespace = mc.Namespace
 	}
 
-	defaultMetricsReportConfig.Enable = m.Enable == "1"
-	defaultMetricsReportConfig.Port = m.Port
-	defaultMetricsReportConfig.Path = m.Path
-	defaultMetricsReportConfig.PushGatewayAddress = m.PushGatewayAddress
+	defaultMetricsReportConfig.Enable = mc.Enable
+	defaultMetricsReportConfig.Port = mc.Port
+	defaultMetricsReportConfig.Path = mc.Path
+	defaultMetricsReportConfig.PushGatewayAddress = mc.PushGatewayAddress
+	defaultMetricsReportConfig.SummaryMaxAge = mc.SummaryMaxAge
 	return defaultMetricsReportConfig
 }
 
-// nolint
 func (mc *MetricConfig) Init() error {
 	if mc == nil {
 		return errors.New("metrics config is null")
@@ -73,12 +75,22 @@ type MetricConfigBuilder struct {
 	metricConfig *MetricConfig
 }
 
-// nolint
 func NewMetricConfigBuilder() *MetricConfigBuilder {
 	return &MetricConfigBuilder{metricConfig: &MetricConfig{}}
 }
 
-// nolint
 func (mcb *MetricConfigBuilder) Build() *MetricConfig {
 	return mcb.metricConfig
+}
+
+// DynamicUpdateProperties dynamically update properties.
+func (mc *MetricConfig) DynamicUpdateProperties(newMetricConfig *MetricConfig) {
+	if newMetricConfig != nil {
+		if newMetricConfig.Enable != mc.Enable {
+			mc.Enable = newMetricConfig.Enable
+			logger.Infof("MetricConfig's Enable was dynamically updated, new value:%v", mc.Enable)
+
+			extension.GetMetricReporter("prometheus", mc.ToReporterConfig())
+		}
+	}
 }

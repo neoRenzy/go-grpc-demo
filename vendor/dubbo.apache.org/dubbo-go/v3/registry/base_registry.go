@@ -28,20 +28,19 @@ import (
 )
 
 import (
+	"github.com/dubbogo/gost/log/logger"
+
 	perrors "github.com/pkg/errors"
 )
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
 )
 
 const (
-	// RegistryConnDelay connection delay
-	RegistryConnDelay = 3
-	// MaxWaitInterval max wait interval
-	MaxWaitInterval = 3 * time.Second
+	RegistryConnDelay = 3               // connection delay
+	MaxWaitInterval   = 3 * time.Second // max wait interval
 )
 
 var (
@@ -56,43 +55,43 @@ func init() {
 
 type createPathFunc func(dubboPath string) error
 
-/*
- * -----------------------------------NOTICE---------------------------------------------
- * If there is no special case, you'd better inherit BaseRegistry and implement the
- * FacadeBasedRegistry interface instead of directly implementing the Registry interface.
- * --------------------------------------------------------------------------------------
- */
-
-/*
- * FacadeBasedRegistry interface is subclass of Registry, and it is designed for registry who want to inherit BaseRegistry.
- * You have to implement the interface to inherit BaseRegistry.
- */
+// FacadeBasedRegistry is the interface of Registry, and it is designed for registry who
+// want to inherit BaseRegistry. If there is no special case, you'd better inherit BaseRegistry
+// and implement the FacadeBasedRegistry interface instead of directly implementing the
+// Registry interface.
+//
+// CreatePath method create the path in the registry.
+//
+// DoRegister method actually does the register job.
+//
+// DoUnregister method does the unregister job.
+//
+// DoSubscribe method actually subscribes the URL.
+//
+// DoUnsubscribe method does unsubscribe the URL.
+//
+// CloseAndNilClient method closes the client and then reset the client in registry to nil
+// you should notice that this method will be invoked inside a lock.
+// So you should implement this method as light weighted as you can.
+//
+// CloseListener method closes listeners.
+//
+// InitListeners method init listeners
 type FacadeBasedRegistry interface {
 	Registry
 
-	// CreatePath create the path in the registry
 	CreatePath(string) error
-	// DoRegister actually do the register job
 	DoRegister(string, string) error
-	// DoUnregister do the unregister job
 	DoUnregister(string, string) error
-	// DoSubscribe actually subscribe the URL
 	DoSubscribe(conf *common.URL) (Listener, error)
-	// DoUnsubscribe does unsubscribe the URL
 	DoUnsubscribe(conf *common.URL) (Listener, error)
-	// CloseAndNilClient close the client and then reset the client in registry to nil
-	// you should notice that this method will be invoked inside a lock.
-	// So you should implement this method as light weighted as you can.
 	CloseAndNilClient()
-	// CloseListener close listeners
 	CloseListener()
-	// InitListeners init listeners
 	InitListeners()
 }
 
 // BaseRegistry is a common logic abstract for registry. It implement Registry interface.
 type BaseRegistry struct {
-	// context             context.Context
 	facadeBasedRegistry FacadeBasedRegistry
 	*common.URL
 	birth      int64          // time of file birth, seconds since Epoch; 0 if unknown
@@ -133,12 +132,12 @@ func (r *BaseRegistry) Destroy() {
 // Register implement interface registry to register
 func (r *BaseRegistry) Register(url *common.URL) error {
 	// if developer define registry port and ip, use it first.
-	if ipToRegistry := os.Getenv("DUBBO_IP_TO_REGISTRY"); len(ipToRegistry) > 0 {
+	if ipToRegistry := os.Getenv(constant.DubboIpToRegistryKey); len(ipToRegistry) > 0 {
 		url.Ip = ipToRegistry
 	} else {
 		url.Ip = common.GetLocalIp()
 	}
-	if portToRegistry := os.Getenv("DUBBO_PORT_TO_REGISTRY"); len(portToRegistry) > 0 {
+	if portToRegistry := os.Getenv(constant.DubboPortToRegistryKey); len(portToRegistry) > 0 {
 		url.Port = portToRegistry
 	}
 	// todo bug when provider、consumer simultaneous initialization
@@ -217,13 +216,11 @@ func (r *BaseRegistry) processURL(c *common.URL, f func(string, string) error, c
 		panic(" Must provide a `function(string, string) error` to process URL. ")
 	}
 	var (
-		err error
-		// revision   string
+		err        error
 		params     url.Values
 		rawURL     string
 		encodedURL string
 		dubboPath  string
-		// conf       config.URL
 	)
 	params = url.Values{}
 
@@ -290,7 +287,7 @@ func (r *BaseRegistry) providerRegistry(c *common.URL, params url.Values, f crea
 	}
 	logger.Debugf("provider url params:%#v", params)
 	var host string
-	if len(c.Ip) > 0 {
+	if len(c.Ip) == 0 {
 		host = localIP
 	} else {
 		host = c.Ip
@@ -408,6 +405,11 @@ func (r *BaseRegistry) UnSubscribe(url *common.URL, notifyListener NotifyListene
 		}
 	}
 	return nil
+}
+
+// LoadSubscribeInstances load subscribe instance
+func (r *BaseRegistry) LoadSubscribeInstances(url *common.URL, notify NotifyListener) error {
+	return r.facadeBasedRegistry.LoadSubscribeInstances(url, notify)
 }
 
 // closeRegisters close and remove registry client and reset services map

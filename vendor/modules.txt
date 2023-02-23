@@ -1,7 +1,7 @@
 # contrib.go.opencensus.io/exporter/prometheus v0.4.1
 ## explicit; go 1.13
 contrib.go.opencensus.io/exporter/prometheus
-# dubbo.apache.org/dubbo-go/v3 v3.0.1
+# dubbo.apache.org/dubbo-go/v3 v3.0.5
 ## explicit; go 1.15
 dubbo.apache.org/dubbo-go/v3/cluster/cluster
 dubbo.apache.org/dubbo-go/v3/cluster/directory
@@ -13,12 +13,8 @@ dubbo.apache.org/dubbo-go/v3/cluster/router/chain
 dubbo.apache.org/dubbo-go/v3/common
 dubbo.apache.org/dubbo-go/v3/common/config
 dubbo.apache.org/dubbo-go/v3/common/constant
+dubbo.apache.org/dubbo-go/v3/common/constant/file
 dubbo.apache.org/dubbo-go/v3/common/extension
-dubbo.apache.org/dubbo-go/v3/common/file
-dubbo.apache.org/dubbo-go/v3/common/logger
-dubbo.apache.org/dubbo-go/v3/common/observer
-dubbo.apache.org/dubbo-go/v3/common/proxy
-dubbo.apache.org/dubbo-go/v3/common/yaml
 dubbo.apache.org/dubbo-go/v3/config
 dubbo.apache.org/dubbo-go/v3/config/generic
 dubbo.apache.org/dubbo-go/v3/config/instance
@@ -43,6 +39,7 @@ dubbo.apache.org/dubbo-go/v3/protocol/protocolwrapper
 dubbo.apache.org/dubbo-go/v3/protocol/rest/client
 dubbo.apache.org/dubbo-go/v3/protocol/rest/config
 dubbo.apache.org/dubbo-go/v3/protocol/rest/server
+dubbo.apache.org/dubbo-go/v3/proxy
 dubbo.apache.org/dubbo-go/v3/registry
 dubbo.apache.org/dubbo-go/v3/registry/servicediscovery/instance
 dubbo.apache.org/dubbo-go/v3/remoting
@@ -85,8 +82,11 @@ github.com/dubbogo/gost/container/chan
 github.com/dubbogo/gost/container/queue
 github.com/dubbogo/gost/container/set
 github.com/dubbogo/gost/context
+github.com/dubbogo/gost/encoding/yaml
+github.com/dubbogo/gost/gof/observer
 github.com/dubbogo/gost/hash/page
 github.com/dubbogo/gost/log
+github.com/dubbogo/gost/log/logger
 github.com/dubbogo/gost/math/big
 github.com/dubbogo/gost/net
 github.com/dubbogo/gost/path/filepath
@@ -159,7 +159,6 @@ github.com/dubbogo/triple/pkg/tracing
 github.com/dubbogo/triple/pkg/triple
 # github.com/ghodss/yaml v1.0.0
 ## explicit
-github.com/ghodss/yaml
 # github.com/go-kit/log v0.1.0
 ## explicit; go 1.16
 github.com/go-kit/log
@@ -167,9 +166,8 @@ github.com/go-kit/log/level
 # github.com/go-logfmt/logfmt v0.5.0
 ## explicit; go 1.13
 github.com/go-logfmt/logfmt
-# github.com/go-logr/logr v0.4.0
-## explicit; go 1.14
-github.com/go-logr/logr
+# github.com/go-logr/logr v1.2.3
+## explicit; go 1.16
 # github.com/go-ole/go-ole v1.2.6
 ## explicit; go 1.12
 github.com/go-ole/go-ole
@@ -186,8 +184,6 @@ github.com/go-playground/universal-translator
 github.com/go-playground/validator/v10
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
-github.com/gogo/protobuf/proto
-github.com/gogo/protobuf/sortkeys
 # github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 ## explicit
 github.com/golang/groupcache/lru
@@ -204,14 +200,11 @@ github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/snappy
 # github.com/google/go-cmp v0.5.9
 ## explicit; go 1.13
-github.com/google/go-cmp/cmp
-github.com/google/go-cmp/cmp/internal/diff
-github.com/google/go-cmp/cmp/internal/flags
-github.com/google/go-cmp/cmp/internal/function
-github.com/google/go-cmp/cmp/internal/value
 # github.com/google/gofuzz v1.1.0
 ## explicit; go 1.12
-github.com/google/gofuzz
+# github.com/google/uuid v1.3.0
+## explicit
+github.com/google/uuid
 # github.com/gorilla/websocket v1.4.2
 ## explicit; go 1.12
 github.com/gorilla/websocket
@@ -220,7 +213,6 @@ github.com/gorilla/websocket
 github.com/jinzhu/copier
 # github.com/json-iterator/go v1.1.12
 ## explicit; go 1.12
-github.com/json-iterator/go
 # github.com/k0kubun/pp v3.0.1+incompatible
 ## explicit
 github.com/k0kubun/pp
@@ -231,6 +223,7 @@ github.com/knadh/koanf/maps
 github.com/knadh/koanf/parsers/json
 github.com/knadh/koanf/parsers/toml
 github.com/knadh/koanf/parsers/yaml
+github.com/knadh/koanf/providers/confmap
 github.com/knadh/koanf/providers/rawbytes
 # github.com/leodido/go-urn v1.2.1
 ## explicit; go 1.13
@@ -261,10 +254,8 @@ github.com/mitchellh/mapstructure
 github.com/mitchellh/reflectwalk
 # github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 ## explicit
-github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.2
 ## explicit; go 1.12
-github.com/modern-go/reflect2
 # github.com/mschoch/smat v0.2.0
 ## explicit; go 1.13
 github.com/mschoch/smat
@@ -309,7 +300,6 @@ github.com/prometheus/statsd_exporter/pkg/mapper
 github.com/prometheus/statsd_exporter/pkg/mapper/fsm
 # github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b
 ## explicit
-github.com/satori/go.uuid
 # github.com/shettyh/threadpool v0.0.0-20200323115144-b99fd8aaa945
 ## explicit; go 1.14
 github.com/shettyh/threadpool
@@ -498,7 +488,6 @@ google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
 # gopkg.in/inf.v0 v0.9.1
 ## explicit
-gopkg.in/inf.v0
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
@@ -507,30 +496,7 @@ gopkg.in/yaml.v2
 gopkg.in/yaml.v3
 # k8s.io/apimachinery v0.22.4
 ## explicit; go 1.16
-k8s.io/apimachinery/pkg/api/resource
-k8s.io/apimachinery/pkg/apis/meta/v1
-k8s.io/apimachinery/pkg/conversion
-k8s.io/apimachinery/pkg/conversion/queryparams
-k8s.io/apimachinery/pkg/fields
-k8s.io/apimachinery/pkg/labels
-k8s.io/apimachinery/pkg/runtime
-k8s.io/apimachinery/pkg/runtime/schema
-k8s.io/apimachinery/pkg/selection
-k8s.io/apimachinery/pkg/types
-k8s.io/apimachinery/pkg/util/errors
-k8s.io/apimachinery/pkg/util/intstr
-k8s.io/apimachinery/pkg/util/json
-k8s.io/apimachinery/pkg/util/naming
-k8s.io/apimachinery/pkg/util/net
-k8s.io/apimachinery/pkg/util/runtime
-k8s.io/apimachinery/pkg/util/sets
-k8s.io/apimachinery/pkg/util/validation
-k8s.io/apimachinery/pkg/util/validation/field
-k8s.io/apimachinery/pkg/watch
-k8s.io/apimachinery/third_party/forked/golang/reflect
 # k8s.io/klog/v2 v2.9.0
 ## explicit; go 1.13
-k8s.io/klog/v2
 # sigs.k8s.io/structured-merge-diff/v4 v4.1.2
 ## explicit; go 1.13
-sigs.k8s.io/structured-merge-diff/v4/value

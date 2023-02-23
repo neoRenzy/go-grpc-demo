@@ -29,6 +29,8 @@ import (
 import (
 	ocprom "contrib.go.opencensus.io/exporter/prometheus"
 
+	"github.com/dubbogo/gost/log/logger"
+
 	"github.com/prometheus/client_golang/prometheus"
 	prom "github.com/prometheus/client_golang/prometheus"
 )
@@ -37,7 +39,6 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
 	"dubbo.apache.org/dubbo-go/v3/metrics"
 	"dubbo.apache.org/dubbo-go/v3/protocol"
 )
@@ -77,10 +78,12 @@ func init() {
 // if you want to use this feature, you need to initialize your prometheus.
 // https://prometheus.io/docs/guides/go-application/
 type PrometheusReporter struct {
+	reporterServer *http.Server
+	reporterConfig *metrics.ReporterConfig
 	// report the consumer-side's rt gauge data
-	consumerRTGaugeVec *prometheus.GaugeVec
+	consumerRTSummaryVec *prometheus.SummaryVec
 	// report the provider-side's rt gauge data
-	providerRTGaugeVec *prometheus.GaugeVec
+	providerRTSummaryVec *prometheus.SummaryVec
 	// todo tps support
 	// report the consumer-side's tps gauge data
 	consumerTPSGaugeVec *prometheus.GaugeVec
@@ -101,12 +104,16 @@ type PrometheusReporter struct {
 // the role in url must be consumer or provider
 // or it will be ignored
 func (reporter *PrometheusReporter) Report(ctx context.Context, invoker protocol.Invoker, invocation protocol.Invocation, cost time.Duration, res protocol.Result) {
+	if !reporter.reporterConfig.Enable {
+		return
+	}
+
 	url := invoker.GetURL()
-	var rtVec *prometheus.GaugeVec
+	var rtVec *prometheus.SummaryVec
 	if isProvider(url) {
-		rtVec = reporter.providerRTGaugeVec
+		rtVec = reporter.providerRTSummaryVec
 	} else if isConsumer(url) {
-		rtVec = reporter.consumerRTGaugeVec
+		rtVec = reporter.consumerRTSummaryVec
 	} else {
 		logger.Warnf("The url belongs neither the consumer nor the provider, "+
 			"so the invocation will be ignored. url: %s", url.String())
@@ -121,7 +128,7 @@ func (reporter *PrometheusReporter) Report(ctx context.Context, invoker protocol
 		timeoutKey: url.GetParam(timeoutKey, ""),
 	}
 	costMs := cost.Nanoseconds()
-	rtVec.With(labels).Set(float64(costMs))
+	rtVec.With(labels).Observe(float64(costMs))
 }
 
 func newHistogramVec(name, namespace string, labels []string) *prometheus.HistogramVec {
@@ -176,7 +183,7 @@ func newSummary(name, namespace string) prometheus.Summary {
 
 // newSummaryVec create SummaryVec, the Namespace is dubbo
 // the objectives is from my experience.
-func newSummaryVec(name, namespace string, labels []string) *prometheus.SummaryVec {
+func newSummaryVec(name, namespace string, labels []string, maxAge int64) *prometheus.SummaryVec {
 	return prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
 			Namespace: namespace,
@@ -189,6 +196,7 @@ func newSummaryVec(name, namespace string, labels []string) *prometheus.SummaryV
 				0.99:  0.001,
 				0.999: 0.0001,
 			},
+			MaxAge: time.Duration(maxAge),
 		},
 		labels,
 	)
@@ -212,34 +220,25 @@ func newPrometheusReporter(reporterConfig *metrics.ReporterConfig) metrics.Repor
 	if reporterInstance == nil {
 		reporterInitOnce.Do(func() {
 			reporterInstance = &PrometheusReporter{
-				namespace:          reporterConfig.Namespace,
-				consumerRTGaugeVec: newGaugeVec(consumerPrefix+serviceKey+rtSuffix, reporterConfig.Namespace, labelNames),
-				providerRTGaugeVec: newGaugeVec(providerPrefix+serviceKey+rtSuffix, reporterConfig.Namespace, labelNames),
+				reporterConfig:       reporterConfig,
+				namespace:            reporterConfig.Namespace,
+				consumerRTSummaryVec: newSummaryVec(consumerPrefix+serviceKey+rtSuffix, reporterConfig.Namespace, labelNames, reporterConfig.SummaryMaxAge),
+				providerRTSummaryVec: newSummaryVec(providerPrefix+serviceKey+rtSuffix, reporterConfig.Namespace, labelNames, reporterConfig.SummaryMaxAge),
 			}
 
-			prom.DefaultRegisterer.MustRegister(reporterInstance.consumerRTGaugeVec, reporterInstance.providerRTGaugeVec)
-			metricsExporter, err := ocprom.NewExporter(ocprom.Options{
-				Registry: prom.DefaultRegisterer.(*prom.Registry),
-			})
-			if err != nil {
-				logger.Errorf("new prometheus reporter with error = %s", err)
-				return
-			}
-
-			if reporterConfig.Enable {
-				if reporterConfig.Mode == metrics.ReportModePull {
-					go func() {
-						mux := http.NewServeMux()
-						mux.Handle(reporterConfig.Path, metricsExporter)
-						if err := http.ListenAndServe(":"+reporterConfig.Port, mux); err != nil {
-							logger.Warnf("new prometheus reporter with error = %s", err)
-						}
-					}()
-				}
-				// todo pushgateway support
-			}
+			prom.DefaultRegisterer.MustRegister(reporterInstance.consumerRTSummaryVec, reporterInstance.providerRTSummaryVec)
 		})
 	}
+
+	if reporterConfig.Enable {
+		if reporterConfig.Mode == metrics.ReportModePull {
+			go reporterInstance.startupServer(reporterConfig)
+		}
+		// todo pushgateway support
+	} else {
+		reporterInstance.shutdownServer()
+	}
+
 	return reporterInstance
 }
 
@@ -249,11 +248,17 @@ func (reporter *PrometheusReporter) setGauge(gaugeName string, toSetValue float6
 	if len(labelMap) == 0 {
 		// gauge
 		if val, exist := reporter.userGauge.Load(gaugeName); !exist {
-			newGauge := newGauge(gaugeName, reporter.namespace)
-			_ = prom.DefaultRegisterer.Register(newGauge)
+			gauge := newGauge(gaugeName, reporter.namespace)
+			err := prom.DefaultRegisterer.Register(gauge)
+			if err == nil {
+				reporter.userGauge.Store(gaugeName, gauge)
+				gauge.Set(toSetValue)
+			} else if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+				// A gauge for that metric has been registered before.
+				// Use the old gauge from now on.
+				are.ExistingCollector.(prometheus.Gauge).Set(toSetValue)
+			}
 
-			reporter.userGauge.Store(gaugeName, newGauge)
-			newGauge.Set(toSetValue)
 		} else {
 			val.(prometheus.Gauge).Set(toSetValue)
 		}
@@ -266,10 +271,16 @@ func (reporter *PrometheusReporter) setGauge(gaugeName string, toSetValue float6
 		for k, _ := range labelMap {
 			keyList = append(keyList, k)
 		}
-		newGaugeVec := newGaugeVec(gaugeName, reporter.namespace, keyList)
-		_ = prom.DefaultRegisterer.Register(newGaugeVec)
-		reporter.userGaugeVec.Store(gaugeName, newGaugeVec)
-		newGaugeVec.With(labelMap).Set(toSetValue)
+		gaugeVec := newGaugeVec(gaugeName, reporter.namespace, keyList)
+		err := prom.DefaultRegisterer.Register(gaugeVec)
+		if err == nil {
+			reporter.userGaugeVec.Store(gaugeName, gaugeVec)
+			gaugeVec.With(labelMap).Set(toSetValue)
+		} else if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			// A gauge for that metric has been registered before.
+			// Use the old gauge from now on.
+			are.ExistingCollector.(*prometheus.GaugeVec).With(labelMap).Set(toSetValue)
+		}
 	} else {
 		val.(*prometheus.GaugeVec).With(labelMap).Set(toSetValue)
 	}
@@ -281,10 +292,16 @@ func (reporter *PrometheusReporter) incCounter(counterName string, labelMap prom
 	if len(labelMap) == 0 {
 		// counter
 		if val, exist := reporter.userCounter.Load(counterName); !exist {
-			newCounter := newCounter(counterName, reporter.namespace)
-			_ = prom.DefaultRegisterer.Register(newCounter)
-			reporter.userCounter.Store(counterName, newCounter)
-			newCounter.Inc()
+			counter := newCounter(counterName, reporter.namespace)
+			err := prom.DefaultRegisterer.Register(counter)
+			if err == nil {
+				reporter.userCounter.Store(counterName, counter)
+				counter.Inc()
+			} else if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+				// A counter for that metric has been registered before.
+				// Use the old counter from now on.
+				are.ExistingCollector.(prometheus.Counter).Inc()
+			}
 		} else {
 			val.(prometheus.Counter).Inc()
 		}
@@ -297,10 +314,16 @@ func (reporter *PrometheusReporter) incCounter(counterName string, labelMap prom
 		for k, _ := range labelMap {
 			keyList = append(keyList, k)
 		}
-		newCounterVec := newCounterVec(counterName, reporter.namespace, keyList)
-		_ = prom.DefaultRegisterer.Register(newCounterVec)
-		reporter.userCounterVec.Store(counterName, newCounterVec)
-		newCounterVec.With(labelMap).Inc()
+		counterVec := newCounterVec(counterName, reporter.namespace, keyList)
+		err := prom.DefaultRegisterer.Register(counterVec)
+		if err == nil {
+			reporter.userCounterVec.Store(counterName, counterVec)
+			counterVec.With(labelMap).Inc()
+		} else if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			// A counter for that metric has been registered before.
+			// Use the old counter from now on.
+			are.ExistingCollector.(*prometheus.CounterVec).With(labelMap).Inc()
+		}
 	} else {
 		val.(*prometheus.CounterVec).With(labelMap).Inc()
 	}
@@ -312,10 +335,16 @@ func (reporter *PrometheusReporter) incSummary(summaryName string, toSetValue fl
 	if len(labelMap) == 0 {
 		// summary
 		if val, exist := reporter.userSummary.Load(summaryName); !exist {
-			newSummary := newSummary(summaryName, reporter.namespace)
-			_ = prom.DefaultRegisterer.Register(newSummary)
-			reporter.userSummary.Store(summaryName, newSummary)
-			newSummary.Observe(toSetValue)
+			summary := newSummary(summaryName, reporter.namespace)
+			err := prom.DefaultRegisterer.Register(summary)
+			if err == nil {
+				reporter.userSummary.Store(summaryName, summary)
+				summary.Observe(toSetValue)
+			} else if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+				// A summary for that metric has been registered before.
+				// Use the old summary from now on.
+				are.ExistingCollector.(prometheus.Summary).Observe(toSetValue)
+			}
 		} else {
 			val.(prometheus.Summary).Observe(toSetValue)
 		}
@@ -328,35 +357,81 @@ func (reporter *PrometheusReporter) incSummary(summaryName string, toSetValue fl
 		for k, _ := range labelMap {
 			keyList = append(keyList, k)
 		}
-		newSummaryVec := newSummaryVec(summaryName, reporter.namespace, keyList)
-		_ = prom.DefaultRegisterer.Register(newSummaryVec)
-		reporter.userSummaryVec.Store(summaryName, newSummaryVec)
-		newSummaryVec.With(labelMap).Observe(toSetValue)
+		summaryVec := newSummaryVec(summaryName, reporter.namespace, keyList, reporter.reporterConfig.SummaryMaxAge)
+		err := prom.DefaultRegisterer.Register(summaryVec)
+		if err == nil {
+			reporter.userSummaryVec.Store(summaryName, summaryVec)
+			summaryVec.With(labelMap).Observe(toSetValue)
+		} else if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			// A summary for that metric has been registered before.
+			// Use the old summary from now on.
+			are.ExistingCollector.(*prometheus.SummaryVec).With(labelMap).Observe(toSetValue)
+		}
 	} else {
 		val.(*prometheus.SummaryVec).With(labelMap).Observe(toSetValue)
 	}
 }
 
 func SetGaugeWithLabel(gaugeName string, val float64, label prometheus.Labels) {
-	reporterInstance.setGauge(gaugeName, val, label)
+	if reporterInstance.reporterConfig.Enable {
+		reporterInstance.setGauge(gaugeName, val, label)
+	}
 }
 
 func SetGauge(gaugeName string, val float64) {
-	reporterInstance.setGauge(gaugeName, val, make(prometheus.Labels))
+	if reporterInstance.reporterConfig.Enable {
+		reporterInstance.setGauge(gaugeName, val, make(prometheus.Labels))
+	}
 }
 
 func IncCounterWithLabel(counterName string, label prometheus.Labels) {
-	reporterInstance.incCounter(counterName, label)
+	if reporterInstance.reporterConfig.Enable {
+		reporterInstance.incCounter(counterName, label)
+	}
 }
 
 func IncCounter(summaryName string) {
-	reporterInstance.incCounter(summaryName, make(prometheus.Labels))
+	if reporterInstance.reporterConfig.Enable {
+		reporterInstance.incCounter(summaryName, make(prometheus.Labels))
+	}
 }
 
 func IncSummaryWithLabel(counterName string, val float64, label prometheus.Labels) {
-	reporterInstance.incSummary(counterName, val, label)
+	if reporterInstance.reporterConfig.Enable {
+		reporterInstance.incSummary(counterName, val, label)
+	}
 }
 
 func IncSummary(summaryName string, val float64) {
-	reporterInstance.incSummary(summaryName, val, make(prometheus.Labels))
+	if reporterInstance.reporterConfig.Enable {
+		reporterInstance.incSummary(summaryName, val, make(prometheus.Labels))
+	}
+}
+
+func (reporter *PrometheusReporter) startupServer(reporterConfig *metrics.ReporterConfig) {
+	metricsExporter, err := ocprom.NewExporter(ocprom.Options{
+		Registry: prom.DefaultRegisterer.(*prom.Registry),
+	})
+	if err != nil {
+		logger.Errorf("new prometheus reporter with error = %s", err)
+		return
+	}
+
+	// start server
+	mux := http.NewServeMux()
+	mux.Handle(reporterConfig.Path, metricsExporter)
+	reporterInstance.reporterServer = &http.Server{Addr: ":" + reporterConfig.Port, Handler: mux}
+	if err := reporterInstance.reporterServer.ListenAndServe(); err != nil {
+		logger.Warnf("new prometheus reporter with error = %s", err)
+	}
+}
+
+func (reporter *PrometheusReporter) shutdownServer() {
+	if reporterInstance.reporterServer != nil {
+		err := reporterInstance.reporterServer.Shutdown(context.Background())
+		if err != nil {
+			logger.Errorf("shutdown prometheus reporter with error = %s, prometheus reporter close now", err)
+			reporterInstance.reporterServer.Close()
+		}
+	}
 }

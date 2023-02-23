@@ -23,6 +23,8 @@ import (
 )
 
 import (
+	"github.com/dubbogo/gost/log/logger"
+
 	perrors "github.com/pkg/errors"
 
 	uatomic "go.uber.org/atomic"
@@ -30,15 +32,11 @@ import (
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
 )
 
 var (
-	// ErrClientClosed means client has clossed.
-	ErrClientClosed = perrors.New("remoting client has closed")
-	// ErrNoReply
-	ErrNoReply = perrors.New("request need @response")
-	// ErrDestroyedInvoker
+	ErrClientClosed     = perrors.New("remoting client has closed")
+	ErrNoReply          = perrors.New("request need @response")
 	ErrDestroyedInvoker = perrors.New("request Destroyed invoker")
 )
 
@@ -51,11 +49,7 @@ type Invoker interface {
 	Invoke(context.Context, Invocation) Result
 }
 
-/////////////////////////////
-// base invoker
-/////////////////////////////
-
-// BaseInvoker provides default invoker implement
+// BaseInvoker provides default invoker implements Invoker
 type BaseInvoker struct {
 	url       *common.URL
 	available uatomic.Bool

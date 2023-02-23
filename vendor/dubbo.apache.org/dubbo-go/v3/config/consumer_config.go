@@ -24,13 +24,15 @@ import (
 
 import (
 	"github.com/creasty/defaults"
+
+	"github.com/dubbogo/gost/log/logger"
+
+	tripleConstant "github.com/dubbogo/triple/pkg/common/constant"
 )
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
-	"dubbo.apache.org/dubbo-go/v3/config/generic"
 )
 
 const (
@@ -39,23 +41,18 @@ const (
 
 // ConsumerConfig is Consumer default configuration
 type ConsumerConfig struct {
-	Filter string `yaml:"filter" json:"filter,omitempty" property:"filter"`
-	// support string
-	RegistryIDs []string `yaml:"registry-ids" json:"registry-ids,omitempty" property:"registry-ids"`
-
-	RequestTimeout string `default:"3s" yaml:"request-timeout" json:"request-timeout,omitempty" property:"request-timeout"`
-	ProxyFactory   string `default:"default" yaml:"proxy" json:"proxy,omitempty" property:"proxy"`
-	Check          bool   `yaml:"check" json:"check,omitempty" property:"check"`
-	// adaptive service
-	AdaptiveService bool `default:"false" yaml:"adaptive-service" json:"adaptive-service" property:"adaptive-service"`
-
-	References map[string]*ReferenceConfig `yaml:"references" json:"references,omitempty" property:"references"`
-	TracingKey string                      `yaml:"tracing-key" json:"tracing-key" property:"tracing-key"`
-
-	FilterConf                     interface{} `yaml:"filter-conf" json:"filter-conf,omitempty" property:"filter-conf"`
-	MaxWaitTimeForServiceDiscovery string      `default:"3s" yaml:"max-wait-time-for-service-discovery" json:"max-wait-time-for-service-discovery,omitempty" property:"max-wait-time-for-service-discovery"`
-
-	rootConfig *RootConfig
+	Filter                         string                      `yaml:"filter" json:"filter,omitempty" property:"filter"`
+	RegistryIDs                    []string                    `yaml:"registry-ids" json:"registry-ids,omitempty" property:"registry-ids"`
+	Protocol                       string                      `yaml:"protocol" json:"protocol,omitempty" property:"protocol"`
+	RequestTimeout                 string                      `default:"3s" yaml:"request-timeout" json:"request-timeout,omitempty" property:"request-timeout"`
+	ProxyFactory                   string                      `default:"default" yaml:"proxy" json:"proxy,omitempty" property:"proxy"`
+	Check                          bool                        `yaml:"check" json:"check,omitempty" property:"check"`
+	AdaptiveService                bool                        `default:"false" yaml:"adaptive-service" json:"adaptive-service" property:"adaptive-service"`
+	References                     map[string]*ReferenceConfig `yaml:"references" json:"references,omitempty" property:"references"`
+	TracingKey                     string                      `yaml:"tracing-key" json:"tracing-key" property:"tracing-key"`
+	FilterConf                     interface{}                 `yaml:"filter-conf" json:"filter-conf,omitempty" property:"filter-conf"`
+	MaxWaitTimeForServiceDiscovery string                      `default:"3s" yaml:"max-wait-time-for-service-discovery" json:"max-wait-time-for-service-discovery,omitempty" property:"max-wait-time-for-service-discovery"`
+	rootConfig                     *RootConfig
 }
 
 // Prefix dubbo.consumer
@@ -67,7 +64,7 @@ func (cc *ConsumerConfig) Init(rc *RootConfig) error {
 	if cc == nil {
 		return nil
 	}
-	cc.RegistryIDs = translateRegistryIds(cc.RegistryIDs)
+	cc.RegistryIDs = translateIds(cc.RegistryIDs)
 	if len(cc.RegistryIDs) <= 0 {
 		cc.RegistryIDs = rc.getRegistryIds()
 	}
@@ -84,7 +81,7 @@ func (cc *ConsumerConfig) Init(rc *RootConfig) error {
 			triplePBService, ok := reference.(common.TriplePBService)
 			if !ok {
 				logger.Errorf("Dubbo-go cannot get interface name with reference = %s."+
-					"Please run the command 'go install github.com/dubbogo/tools/cmd/protoc-gen-go-triple@latest' to get the latest "+
+					"Please run the command 'go install github.com/dubbogo/dubbogo-cli/cmd/protoc-gen-go-triple@latest' to get the latest "+
 					"protoc-gen-go-triple,  and then re-generate your pb file again by this tool."+
 					"If you are not using pb serialization, please set 'interfaceName' field in reference config to let dubbogo get the interface name.", key)
 				continue
@@ -109,19 +106,30 @@ func (cc *ConsumerConfig) Init(rc *RootConfig) error {
 }
 
 func (cc *ConsumerConfig) Load() {
-	for key, ref := range cc.References {
-		if ref.Generic != "" {
-			genericService := generic.NewGenericService(key)
-			SetConsumerService(genericService)
+	for registeredTypeName, refRPCService := range GetConsumerServiceMap() {
+		refConfig, ok := cc.References[registeredTypeName]
+		if !ok {
+			// not found configuration, now new a configuration with default.
+			refConfig = NewReferenceConfigBuilder().SetProtocol(tripleConstant.TRIPLE).Build()
+			triplePBService, ok := refRPCService.(common.TriplePBService)
+			if !ok {
+				logger.Errorf("Dubbo-go cannot get interface name with registeredTypeName = %s."+
+					"Please run the command 'go install github.com/dubbogo/dubbogo-cli/cmd/protoc-gen-go-triple@latest' to get the latest "+
+					"protoc-gen-go-triple,  and then re-generate your pb file again by this tool."+
+					"If you are not using pb serialization, please set 'interfaceName' field in reference config to let dubbogo get the interface name.", registeredTypeName)
+				continue
+			} else {
+				// use interface name defined by pb
+				refConfig.InterfaceName = triplePBService.XXX_InterfaceName()
+			}
+			if err := refConfig.Init(rootConfig); err != nil {
+				logger.Errorf(fmt.Sprintf("reference with registeredTypeName = %s init failed! err: %#v", registeredTypeName, err))
+				continue
+			}
 		}
-		rpcService := GetConsumerService(key)
-		if rpcService == nil {
-			logger.Warnf("%s does not exist!", key)
-			continue
-		}
-		ref.id = key
-		ref.Refer(rpcService)
-		ref.Implement(rpcService)
+		refConfig.id = registeredTypeName
+		refConfig.Refer(refRPCService)
+		refConfig.Implement(refRPCService)
 	}
 
 	var maxWait int
@@ -137,24 +145,24 @@ func (cc *ConsumerConfig) Load() {
 	var count int
 	for {
 		checkok := true
-		for _, refconfig := range cc.References {
-			if (refconfig.Check != nil && *refconfig.Check) ||
-				(refconfig.Check == nil && cc.Check) ||
-				(refconfig.Check == nil) { // default to true
+		for key, ref := range cc.References {
+			if (ref.Check != nil && *ref.Check && GetProviderService(key) == nil) ||
+				(ref.Check == nil && cc.Check && GetProviderService(key) == nil) ||
+				(ref.Check == nil && GetProviderService(key) == nil) { // default to true
 
-				if refconfig.invoker != nil && !refconfig.invoker.IsAvailable() {
+				if ref.invoker != nil && !ref.invoker.IsAvailable() {
 					checkok = false
 					count++
 					if count > maxWait {
-						errMsg := fmt.Sprintf("No provider available of the service %v.please check configuration.", refconfig.InterfaceName)
+						errMsg := fmt.Sprintf("No provider available of the service %v.please check configuration.", ref.InterfaceName)
 						logger.Error(errMsg)
 						panic(errMsg)
 					}
 					time.Sleep(time.Second * 1)
 					break
 				}
-				if refconfig.invoker == nil {
-					logger.Warnf("The interface %s invoker not exist, may you should check your interface config.", refconfig.InterfaceName)
+				if ref.invoker == nil {
+					logger.Warnf("The interface %s invoker not exist, may you should check your interface config.", ref.InterfaceName)
 				}
 			}
 		}
@@ -238,4 +246,12 @@ func (ccb *ConsumerConfigBuilder) SetRootConfig(rootConfig *RootConfig) *Consume
 
 func (ccb *ConsumerConfigBuilder) Build() *ConsumerConfig {
 	return ccb.consumerConfig
+}
+
+// DynamicUpdateProperties dynamically update properties.
+func (cc *ConsumerConfig) DynamicUpdateProperties(newConsumerConfig *ConsumerConfig) {
+	if newConsumerConfig != nil && newConsumerConfig.RequestTimeout != cc.RequestTimeout {
+		cc.RequestTimeout = newConsumerConfig.RequestTimeout
+		logger.Infof("ConsumerConfig's RequestTimeout was dynamically updated, new value:%v", cc.RequestTimeout)
+	}
 }

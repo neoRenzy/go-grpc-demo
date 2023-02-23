@@ -35,10 +35,10 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
-	"dubbo.apache.org/dubbo-go/v3/common/proxy"
 	"dubbo.apache.org/dubbo-go/v3/config/generic"
 	"dubbo.apache.org/dubbo-go/v3/protocol"
 	"dubbo.apache.org/dubbo-go/v3/protocol/protocolwrapper"
+	"dubbo.apache.org/dubbo-go/v3/proxy"
 )
 
 // ReferenceConfig is the configuration of service consumer
@@ -49,7 +49,7 @@ type ReferenceConfig struct {
 	Check          *bool             `yaml:"check"  json:"check,omitempty" property:"check"`
 	URL            string            `yaml:"url"  json:"url,omitempty" property:"url"`
 	Filter         string            `yaml:"filter" json:"filter,omitempty" property:"filter"`
-	Protocol       string            `default:"tri" yaml:"protocol"  json:"protocol,omitempty" property:"protocol"`
+	Protocol       string            `yaml:"protocol"  json:"protocol,omitempty" property:"protocol"`
 	RegistryIDs    []string          `yaml:"registry-ids"  json:"registry-ids,omitempty"  property:"registry-ids"`
 	Cluster        string            `yaml:"cluster"  json:"cluster,omitempty" property:"cluster"`
 	Loadbalance    string            `yaml:"loadbalance"  json:"loadbalance,omitempty" property:"loadbalance"`
@@ -89,14 +89,28 @@ func (rc *ReferenceConfig) Init(root *RootConfig) error {
 	rc.rootConfig = root
 	if root.Application != nil {
 		rc.metaDataType = root.Application.MetadataType
+		if rc.Group == "" {
+			rc.Group = root.Application.Group
+		}
+		if rc.Version == "" {
+			rc.Version = root.Application.Version
+		}
+	}
+	if rc.Filter == "" {
+		rc.Filter = root.Consumer.Filter
 	}
 	if rc.Cluster == "" {
 		rc.Cluster = "failover"
 	}
-	rc.RegistryIDs = translateRegistryIds(rc.RegistryIDs)
+	rc.RegistryIDs = translateIds(rc.RegistryIDs)
 	if len(rc.RegistryIDs) <= 0 {
 		rc.RegistryIDs = root.Consumer.RegistryIDs
 	}
+
+	if rc.Protocol == "" {
+		rc.Protocol = root.Consumer.Protocol
+	}
+
 	if rc.TracingKey == "" {
 		rc.TracingKey = root.Consumer.TracingKey
 	}
@@ -178,7 +192,7 @@ func (rc *ReferenceConfig) Refer(srv interface{}) {
 	invokers := make([]protocol.Invoker, len(rc.urls))
 	for i, u := range rc.urls {
 		if u.Protocol == constant.ServiceRegistryProtocol {
-			invoker = extension.GetProtocol("registry").Refer(u)
+			invoker = extension.GetProtocol(constant.RegistryProtocol).Refer(u)
 		} else {
 			invoker = extension.GetProtocol(u.Protocol).Refer(u)
 		}
@@ -298,7 +312,7 @@ func (rc *ReferenceConfig) getURLMap() url.Values {
 	if rc.Generic != "" {
 		defaultReferenceFilter = constant.GenericFilterKey + "," + defaultReferenceFilter
 	}
-	urlMap.Set(constant.ReferenceFilterKey, mergeValue(rc.rootConfig.Consumer.Filter, "", defaultReferenceFilter))
+	urlMap.Set(constant.ReferenceFilterKey, mergeValue(rc.Filter, "", defaultReferenceFilter))
 
 	for _, v := range rc.Methods {
 		urlMap.Set("methods."+v.Name+"."+constant.LoadbalanceKey, v.LoadBalance)
@@ -382,6 +396,81 @@ func (pcb *ReferenceConfigBuilder) SetSerialization(serialization string) *Refer
 
 func (pcb *ReferenceConfigBuilder) SetProtocol(protocol string) *ReferenceConfigBuilder {
 	pcb.referenceConfig.Protocol = protocol
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetURL(url string) *ReferenceConfigBuilder {
+	pcb.referenceConfig.URL = url
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetFilter(filter string) *ReferenceConfigBuilder {
+	pcb.referenceConfig.Filter = filter
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetLoadbalance(loadbalance string) *ReferenceConfigBuilder {
+	pcb.referenceConfig.Loadbalance = loadbalance
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetRetries(retries string) *ReferenceConfigBuilder {
+	pcb.referenceConfig.Retries = retries
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetGroup(group string) *ReferenceConfigBuilder {
+	pcb.referenceConfig.Group = group
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetVersion(version string) *ReferenceConfigBuilder {
+	pcb.referenceConfig.Version = version
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetProvidedBy(providedBy string) *ReferenceConfigBuilder {
+	pcb.referenceConfig.ProvidedBy = providedBy
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetMethodConfig(methodConfigs []*MethodConfig) *ReferenceConfigBuilder {
+	pcb.referenceConfig.Methods = methodConfigs
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) AddMethodConfig(methodConfig *MethodConfig) *ReferenceConfigBuilder {
+	pcb.referenceConfig.Methods = append(pcb.referenceConfig.Methods, methodConfig)
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetAsync(async bool) *ReferenceConfigBuilder {
+	pcb.referenceConfig.Async = async
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetParams(params map[string]string) *ReferenceConfigBuilder {
+	pcb.referenceConfig.Params = params
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetSticky(sticky bool) *ReferenceConfigBuilder {
+	pcb.referenceConfig.Sticky = sticky
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetRequestTimeout(requestTimeout string) *ReferenceConfigBuilder {
+	pcb.referenceConfig.RequestTimeout = requestTimeout
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetForceTag(forceTag bool) *ReferenceConfigBuilder {
+	pcb.referenceConfig.ForceTag = forceTag
+	return pcb
+}
+
+func (pcb *ReferenceConfigBuilder) SetTracingKey(tracingKey string) *ReferenceConfigBuilder {
+	pcb.referenceConfig.TracingKey = tracingKey
 	return pcb
 }
 

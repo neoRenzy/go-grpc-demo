@@ -35,11 +35,9 @@ import (
 
 	gxset "github.com/dubbogo/gost/container/set"
 
+	"github.com/google/uuid"
 	"github.com/jinzhu/copier"
-
 	perrors "github.com/pkg/errors"
-
-	"github.com/satori/go.uuid"
 )
 
 import (
@@ -48,24 +46,17 @@ import (
 
 // dubbo role type constant
 const (
-	// CONSUMER is consumer role
 	CONSUMER = iota
-	// CONFIGURATOR is configurator role
 	CONFIGURATOR
-	// ROUTER is router role
 	ROUTER
-	// PROVIDER is provider role
 	PROVIDER
 	PROTOCOL = "protocol"
 )
 
 var (
-	// DubboNodes Dubbo service node
-	DubboNodes = [...]string{"consumers", "configurators", "routers", "providers"}
-	// DubboRole Dubbo service role
-	DubboRole = [...]string{"consumer", "", "routers", "provider"}
-	// CompareURLEqualFunc compare two URL is equal
-	compareURLEqualFunc CompareURLEqualFunc
+	DubboNodes          = [...]string{"consumers", "configurators", "routers", "providers"} // Dubbo service node
+	DubboRole           = [...]string{"consumer", "", "routers", "provider"}                // Dubbo service role
+	compareURLEqualFunc CompareURLEqualFunc                                                 // function to compare two URL is equal
 )
 
 func init() {
@@ -210,7 +201,7 @@ func WithToken(token string) Option {
 		if len(token) > 0 {
 			value := token
 			if strings.ToLower(token) == "true" || strings.ToLower(token) == "default" {
-				u, _ := uuid.NewV4()
+				u, _ := uuid.NewUUID()
 				value = u.String()
 			}
 			url.SetParam(constant.TokenKey, value)
@@ -291,6 +282,11 @@ func (c *URL) Group() string {
 	return c.GetParam(constant.GroupKey, "")
 }
 
+// Interface get interface
+func (c *URL) Interface() string {
+	return c.GetParam(constant.InterfaceKey, "")
+}
+
 // Version get group
 func (c *URL) Version() string {
 	return c.GetParam(constant.VersionKey, "")
@@ -363,19 +359,20 @@ func (c *URL) Key() string {
 	return buildString
 }
 
-//GetCacheInvokerMapKey get directory cacheInvokerMap key
+// GetCacheInvokerMapKey get directory cacheInvokerMap key
 func (c *URL) GetCacheInvokerMapKey() string {
 	urlNew, _ := NewURL(c.PrimitiveURL)
 
-	buildString := fmt.Sprintf("%s://%s:%s@%s:%s/?interface=%s&group=%s&version=%s&timestamp=%s",
+	buildString := fmt.Sprintf("%s://%s:%s@%s:%s/?interface=%s&group=%s&version=%s&timestamp=%s&"+constant.MeshClusterIDKey+"=%s",
 		c.Protocol, c.Username, c.Password, c.Ip, c.Port, c.Service(), c.GetParam(constant.GroupKey, ""),
-		c.GetParam(constant.VersionKey, ""), urlNew.GetParam(constant.TimestampKey, ""))
+		c.GetParam(constant.VersionKey, ""), urlNew.GetParam(constant.TimestampKey, ""),
+		c.GetParam(constant.MeshClusterIDKey, ""))
 	return buildString
 }
 
 // ServiceKey gets a unique key of a service.
 func (c *URL) ServiceKey() string {
-	return ServiceKey(c.GetParam(constant.InterfaceKey, strings.TrimPrefix(c.Path, "/")),
+	return ServiceKey(c.GetParam(constant.InterfaceKey, strings.TrimPrefix(c.Path, constant.PathSeparator)),
 		c.GetParam(constant.GroupKey, ""), c.GetParam(constant.VersionKey, ""))
 }
 
@@ -685,7 +682,8 @@ func (c *URL) ToMap() map[string]string {
 // will be added into result.
 // for example, if serviceURL contains params (a1->v1, b1->v2) and referenceURL contains params(a2->v3, b1 -> v4)
 // the params of result will be (a1->v1, b1->v2, a2->v3).
-// You should notice that the value of b1 is v2, not v4.
+// You should notice that the value of b1 is v2, not v4
+// except constant.LoadbalanceKey, constant.ClusterKey, constant.RetriesKey, constant.TimeoutKey.
 // due to URL is not thread-safe, so this method is not thread-safe
 func MergeURL(serviceURL *URL, referenceURL *URL) *URL {
 	// After Clone, it is a new URL that there is no thread safe issue.
@@ -694,15 +692,14 @@ func MergeURL(serviceURL *URL, referenceURL *URL) *URL {
 	// iterator the referenceURL if serviceURL not have the key ,merge in
 	// referenceURL usually will not changed. so change RangeParams to GetParams to avoid the string value copy.// Group get group
 	for key, value := range referenceURL.GetParams() {
-		if v := mergedURL.GetParam(key, ""); len(v) == 0 {
-			if len(value) > 0 {
-				params[key] = value
+		if v := mergedURL.GetParam(key, ""); len(v) == 0 && len(value) > 0 {
+			if params == nil {
+				params = url.Values{}
 			}
+			params[key] = make([]string, len(value))
+			copy(params[key], value)
 		}
 	}
-
-	// loadBalance,cluster,retries strategy config
-	methodConfigMergeFcn := mergeNormalParam(params, referenceURL, []string{constant.LoadbalanceKey, constant.ClusterKey, constant.RetriesKey, constant.TimeoutKey})
 
 	// remote timestamp
 	if v := serviceURL.GetParam(constant.TimestampKey, ""); len(v) > 0 {
@@ -712,8 +709,17 @@ func MergeURL(serviceURL *URL, referenceURL *URL) *URL {
 
 	// finally execute methodConfigMergeFcn
 	for _, method := range referenceURL.Methods {
-		for _, fcn := range methodConfigMergeFcn {
-			fcn("methods." + method)
+		for _, paramKey := range []string{constant.LoadbalanceKey, constant.ClusterKey, constant.RetriesKey, constant.TimeoutKey} {
+			if v := referenceURL.GetParam(paramKey, ""); len(v) > 0 {
+				params[paramKey] = []string{v}
+			}
+
+			methodsKey := "methods." + method + "." + paramKey
+			//if len(mergedURL.GetParam(methodsKey, "")) == 0 {
+			if v := referenceURL.GetParam(methodsKey, ""); len(v) > 0 {
+				params[methodsKey] = []string{v}
+			}
+			//}
 		}
 	}
 	// In this way, we will raise some performance.
@@ -733,7 +739,6 @@ func (c *URL) Clone() *URL {
 		newURL.SetParam(key, value)
 		return true
 	})
-
 	return newURL
 }
 
@@ -766,7 +771,7 @@ func (c *URL) Compare(comp cm.Comparator) int {
 	}
 }
 
-// Copy URL based on the reserved parameter's keys.
+// CloneWithParams Copy URL based on the reserved parameter's keys.
 func (c *URL) CloneWithParams(reserveParams []string) *URL {
 	params := url.Values{}
 	for _, reserveParam := range reserveParams {
@@ -819,21 +824,6 @@ func IsEquals(left *URL, right *URL, excludes ...string) bool {
 	return true
 }
 
-func mergeNormalParam(params url.Values, referenceURL *URL, paramKeys []string) []func(method string) {
-	methodConfigMergeFcn := make([]func(method string), 0, len(paramKeys))
-	for _, paramKey := range paramKeys {
-		if v := referenceURL.GetParam(paramKey, ""); len(v) > 0 {
-			params[paramKey] = []string{v}
-		}
-		methodConfigMergeFcn = append(methodConfigMergeFcn, func(method string) {
-			if v := referenceURL.GetParam(method+"."+paramKey, ""); len(v) > 0 {
-				params[method+"."+paramKey] = []string{v}
-			}
-		})
-	}
-	return methodConfigMergeFcn
-}
-
 // URLSlice will be used to sort URL instance
 // Instances will be order by URL.String()
 type URLSlice []*URL
@@ -867,10 +857,28 @@ func GetCompareURLEqualFunc() CompareURLEqualFunc {
 	return compareURLEqualFunc
 }
 
-//GetParamDuration get duration if param is invalid or missing will return 3s
+// GetParamDuration get duration if param is invalid or missing will return 3s
 func (c *URL) GetParamDuration(s string, d string) time.Duration {
 	if t, err := time.ParseDuration(c.GetParam(s, d)); err == nil {
 		return t
 	}
 	return 3 * time.Second
+}
+
+func GetSubscribeName(url *URL) string {
+	var buffer bytes.Buffer
+
+	buffer.Write([]byte(DubboNodes[PROVIDER]))
+	appendParam(&buffer, url, constant.InterfaceKey)
+	appendParam(&buffer, url, constant.VersionKey)
+	appendParam(&buffer, url, constant.GroupKey)
+	return buffer.String()
+}
+
+func appendParam(target *bytes.Buffer, url *URL, key string) {
+	value := url.GetParam(key, "")
+	target.Write([]byte(constant.NacosServiceNameSeparator))
+	if strings.TrimSpace(value) != "" {
+		target.Write([]byte(value))
+	}
 }

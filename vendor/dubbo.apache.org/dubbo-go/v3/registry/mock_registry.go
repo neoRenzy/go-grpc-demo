@@ -23,12 +23,13 @@ import (
 )
 
 import (
+	"github.com/dubbogo/gost/log/logger"
+
 	"go.uber.org/atomic"
 )
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
 )
 
 // MockRegistry is used as mock registry
@@ -127,6 +128,11 @@ func (r *MockRegistry) Subscribe(url *common.URL, notifyListener NotifyListener)
 
 // UnSubscribe :
 func (r *MockRegistry) UnSubscribe(url *common.URL, notifyListener NotifyListener) error {
+	return nil
+}
+
+// LoadSubscribeInstances load subscribe instance
+func (r *MockRegistry) LoadSubscribeInstances(_ *common.URL, _ NotifyListener) error {
 	return nil
 }
 

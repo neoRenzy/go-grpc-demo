@@ -22,33 +22,35 @@ import (
 )
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/common"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
+	"github.com/dubbogo/gost/log/logger"
 )
 
-// Protocol
-// Extension - protocol
+import (
+	"dubbo.apache.org/dubbo-go/v3/common"
+)
+
+// Protocol is the interface that wraps the basic Export, Refer and Destroy method.
+//
+// Export method is to export service for remote invocation
+//
+// Refer method is to refer a remote service
+//
+// Destroy method will destroy all invoker and exporter, so it only is called once.
 type Protocol interface {
-	// Export service for remote invocation
 	Export(invoker Invoker) Exporter
-	// Refer a remote service
 	Refer(url *common.URL) Invoker
-	// Destroy will destroy all invoker and exporter, so it only is called once.
 	Destroy()
 }
 
-// Exporter
-// wrapping invoker
+// Exporter is the interface that wraps the basic GetInvoker method and Destroy UnExport.
+//
+// GetInvoker method is to get invoker.
+//
+// UnExport is to un export an exported service
 type Exporter interface {
-	// GetInvoker gets invoker.
 	GetInvoker() Invoker
-	// Unexport exported service.
-	Unexport()
+	UnExport()
 }
-
-/////////////////////////////
-// base protocol
-/////////////////////////////
 
 // BaseProtocol is default protocol implement.
 type BaseProtocol struct {
@@ -103,20 +105,16 @@ func (bp *BaseProtocol) Destroy() {
 	}
 	bp.invokers = []Invoker{}
 
-	// unexport exporters
+	// un export exporters
 	bp.exporterMap.Range(func(key, exporter interface{}) bool {
 		if exporter != nil {
-			exporter.(Exporter).Unexport()
+			exporter.(Exporter).UnExport()
 		} else {
 			bp.exporterMap.Delete(key)
 		}
 		return true
 	})
 }
-
-/////////////////////////////
-// base exporter
-/////////////////////////////
 
 // BaseExporter is default exporter implement.
 type BaseExporter struct {
@@ -139,8 +137,8 @@ func (de *BaseExporter) GetInvoker() Invoker {
 	return de.invoker
 }
 
-// Unexport exported service.
-func (de *BaseExporter) Unexport() {
+// UnExport un export service.
+func (de *BaseExporter) UnExport() {
 	logger.Infof("Exporter unexport.")
 	de.invoker.Destroy()
 	de.exporterMap.Delete(de.key)

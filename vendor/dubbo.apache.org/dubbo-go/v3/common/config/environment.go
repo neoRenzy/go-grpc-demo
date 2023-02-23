@@ -28,7 +28,7 @@ import (
 )
 
 // Environment
-// There is dubbo.properties file and application level config center configuration which higner than normal config center in java. So in java the
+// There is dubbo.properties file and application level config center configuration which is higher than normal config center in java. So in java the
 // configuration sequence will be config center > application level config center > dubbo.properties > spring bean configuration.
 // But in go, neither the dubbo.properties file or application level config center configuration will not support for the time being.
 // We just have config center configuration which can override configuration in consumer.yaml & provider.yaml.
@@ -58,14 +58,6 @@ func GetEnvInstance() *Environment {
 func NewEnvInstance() {
 	instance = &Environment{configCenterFirst: true}
 }
-
-//func (env *Environment) SetConfigCenterFirst() {
-//	env.configCenterFirst = true
-//}
-
-//func (env *Environment) ConfigCenterFirst() bool {
-//	return env.configCenterFirst
-//}
 
 // UpdateExternalConfigMap updates env externalConfigMap field
 func (env *Environment) UpdateExternalConfigMap(externalMap map[string]string) {

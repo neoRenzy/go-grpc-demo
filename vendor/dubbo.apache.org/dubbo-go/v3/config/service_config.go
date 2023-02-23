@@ -31,6 +31,7 @@ import (
 import (
 	"github.com/creasty/defaults"
 
+	"github.com/dubbogo/gost/log/logger"
 	gxnet "github.com/dubbogo/gost/net"
 
 	perrors "github.com/pkg/errors"
@@ -42,7 +43,6 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
 	"dubbo.apache.org/dubbo-go/v3/protocol"
 	"dubbo.apache.org/dubbo-go/v3/protocol/protocolwrapper"
 )
@@ -73,6 +73,7 @@ type ServiceConfig struct {
 	ExecuteLimit                string            `yaml:"execute.limit" json:"execute.limit,omitempty" property:"execute.limit"`
 	ExecuteLimitRejectedHandler string            `yaml:"execute.limit.rejected.handler" json:"execute.limit.rejected.handler,omitempty" property:"execute.limit.rejected.handler"`
 	Auth                        string            `yaml:"auth" json:"auth,omitempty" property:"auth"`
+	NotRegister                 bool              `yaml:"not_register" json:"not_register,omitempty" property:"not_register"`
 	ParamSign                   string            `yaml:"param.sign" json:"param.sign,omitempty" property:"param.sign"`
 	Tag                         string            `yaml:"tag" json:"tag,omitempty" property:"tag"`
 	GrpcMaxMessageSize          int               `default:"4" yaml:"max_message_size" json:"max_message_size,omitempty"`
@@ -108,18 +109,36 @@ func (s *ServiceConfig) Init(rc *RootConfig) error {
 	}
 	s.exported = atomic.NewBool(false)
 	s.metadataType = rc.Application.MetadataType
+	if s.Filter == "" {
+		s.Filter = rc.Provider.Filter
+	}
+	if s.Version == "" {
+		s.Version = rc.Application.Version
+	}
+	if s.Group == "" {
+		s.Group = rc.Application.Group
+	}
 	s.unexported = atomic.NewBool(false)
-	s.RCRegistriesMap = rc.Registries
-	s.RCProtocolsMap = rc.Protocols
+	if len(s.RCRegistriesMap) == 0 {
+		s.RCRegistriesMap = rc.Registries
+	}
+	if len(s.RCProtocolsMap) == 0 {
+		s.RCProtocolsMap = rc.Protocols
+	}
 	if rc.Provider != nil {
 		s.ProxyFactoryKey = rc.Provider.ProxyFactory
 	}
-	s.RegistryIDs = translateRegistryIds(s.RegistryIDs)
+	s.RegistryIDs = translateIds(s.RegistryIDs)
 	if len(s.RegistryIDs) <= 0 {
 		s.RegistryIDs = rc.Provider.RegistryIDs
 	}
+
+	s.ProtocolIDs = translateIds(s.ProtocolIDs)
 	if len(s.ProtocolIDs) <= 0 {
-		for k, _ := range rc.Protocols {
+		s.ProtocolIDs = rc.Provider.ProtocolIDs
+	}
+	if len(s.ProtocolIDs) <= 0 {
+		for k := range rc.Protocols {
 			s.ProtocolIDs = append(s.ProtocolIDs, k)
 		}
 	}
@@ -218,7 +237,11 @@ func (s *ServiceConfig) Export() error {
 		return nil
 	}
 
-	regUrls := loadRegistries(s.RegistryIDs, s.RCRegistriesMap, common.PROVIDER)
+	regUrls := make([]*common.URL, 0)
+	if !s.NotRegister {
+		regUrls = loadRegistries(s.RegistryIDs, s.RCRegistriesMap, common.PROVIDER)
+	}
+
 	urlMap := s.getUrlMap()
 	protocolConfigs := loadProtocol(s.ProtocolIDs, s.RCProtocolsMap)
 	if len(protocolConfigs) == 0 {
@@ -271,7 +294,7 @@ func (s *ServiceConfig) Export() error {
 			s.cacheMutex.Lock()
 			if s.cacheProtocol == nil {
 				logger.Debugf(fmt.Sprintf("First load the registry protocol, url is {%v}!", ivkURL))
-				s.cacheProtocol = extension.GetProtocol("registry")
+				s.cacheProtocol = extension.GetProtocol(constant.RegistryProtocol)
 			}
 			s.cacheMutex.Unlock()
 
@@ -352,11 +375,11 @@ func loadRegistries(registryIds []string, registries map[string]*RegistryConfig,
 		}
 
 		if target {
-			if registryURL, err := registryConf.toURL(roleType); err != nil {
+			if urls, err := registryConf.toURLs(roleType); err != nil {
 				logger.Errorf("The registry id: %s url is invalid, error: %#v", k, err)
 				panic(err)
 			} else {
-				registryURLs = append(registryURLs, registryURL)
+				registryURLs = append(registryURLs, urls...)
 			}
 		}
 	}
@@ -377,7 +400,7 @@ func (s *ServiceConfig) Unexport() {
 		s.exportersLock.Lock()
 		defer s.exportersLock.Unlock()
 		for _, exporter := range s.exporters {
-			exporter.Unexport()
+			exporter.UnExport()
 		}
 		s.exporters = nil
 	}()
@@ -588,6 +611,11 @@ func (pcb *ServiceConfigBuilder) SetSerialization(serialization string) *Service
 
 func (pcb *ServiceConfigBuilder) SetServiceID(id string) *ServiceConfigBuilder {
 	pcb.serviceConfig.id = id
+	return pcb
+}
+
+func (pcb *ServiceConfigBuilder) SetNotRegister(notRegister bool) *ServiceConfigBuilder {
+	pcb.serviceConfig.NotRegister = notRegister
 	return pcb
 }
 
