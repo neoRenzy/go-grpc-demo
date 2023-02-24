@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	MAX_WORK_NUM = 100000
+	MAX_WORK_NUM = 10000
 	MAX_WORKER   = 5
 	FirstNum     = 32
 	SecondNum    = 46
@@ -23,11 +23,10 @@ const (
 func main() {
 	oneThreadTest()
 
+	fmt.Println("one thread test complete")
 	time.Sleep(time.Second * 3)
 
 	fiveThreadsTest()
-
-	//time.Sleep(time.Second * 5)
 
 	//threadPoolTest()
 }
