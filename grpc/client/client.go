@@ -55,15 +55,16 @@ func oneThreadTest() {
 		}
 	}
 	endTime := time.Now()
-	log.Println(fmt.Sprintf("oneThreadTest cost time: %.4f 秒", endTime.Sub(startTime).Seconds()))
+	log.Println(fmt.Sprintf("oneThreadTest cost time: %d 毫秒", endTime.Sub(startTime).Milliseconds()))
 }
 
 func fiveThreadsTest() {
-	startTime := time.Now()
 	wg := sync.WaitGroup{}
+	cntTime := make([]int64, 6)
 	for core := 0; core < MAX_WORKER; core++ {
 		wg.Add(1)
-		go func() {
+		go func(cnt int) {
+			startTime := time.Now()
 			client := NewGrpcClient()
 			defer wg.Done()
 			defer client.Close()
@@ -77,11 +78,17 @@ func fiveThreadsTest() {
 					log.Fatalf("could not greet: %v", err)
 				}
 			}
-		}()
+			endTime := time.Now()
+			cntTime[cnt] = endTime.Sub(startTime).Milliseconds()
+		}(core)
 	}
 	wg.Wait()
-	endTime := time.Now()
-	log.Println(fmt.Sprintf("fiveThreadsTest cost time: %.4f 秒", endTime.Sub(startTime).Seconds()))
+
+	var all int64
+	for _, t := range cntTime {
+		all = all + t
+	}
+	log.Println(fmt.Sprintf("fiveThreadsTest cost time: %d 毫秒", all))
 }
 
 func threadPoolTest() {
