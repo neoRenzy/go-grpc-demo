@@ -67,7 +67,7 @@ func fiveThreadsTest() {
 			client := NewGrpcClient()
 			defer wg.Done()
 			defer client.Close()
-
+			// 去除新建连接的时间
 			startTime := time.Now()
 			for i := 0; i < MAX_WORK_NUM/MAX_WORKER; i++ {
 				_, err := client.Send(context.Background(), &pb.MessageRequest{
