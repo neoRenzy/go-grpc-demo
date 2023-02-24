@@ -8,12 +8,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
+	"math"
 	"sync"
 	"time"
 )
 
 const (
-	MAX_WORK_NUM = 10000
+	MAX_WORK_NUM = 100000
 	MAX_WORKER   = 5
 	FirstNum     = 32
 	SecondNum    = 46
@@ -22,13 +23,13 @@ const (
 func main() {
 	oneThreadTest()
 
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 3)
 
 	fiveThreadsTest()
 
-	time.Sleep(time.Second * 10)
+	//time.Sleep(time.Second * 5)
 
-	threadPoolTest()
+	//threadPoolTest()
 }
 
 func NewGrpcClient() (client pb.GprcMessageSenderClient) {
@@ -55,20 +56,20 @@ func oneThreadTest() {
 		}
 	}
 	endTime := time.Now()
-	log.Println(fmt.Sprintf("oneThreadTest cost time: %d 毫秒", endTime.Sub(startTime).Milliseconds()))
+	log.Println(fmt.Sprintf("oneThreadTest cost time: %d 微秒", endTime.Sub(startTime).Microseconds()/MAX_WORK_NUM))
 }
 
 func fiveThreadsTest() {
 	wg := sync.WaitGroup{}
-	cntTime := make([]int64, 6)
+	cntTime := make([]int64, 5)
 	for core := 0; core < MAX_WORKER; core++ {
 		wg.Add(1)
 		go func(cnt int) {
-			startTime := time.Now()
 			client := NewGrpcClient()
 			defer wg.Done()
 			defer client.Close()
 
+			startTime := time.Now()
 			for i := 0; i < MAX_WORK_NUM/MAX_WORKER; i++ {
 				_, err := client.Send(context.Background(), &pb.MessageRequest{
 					FirstNum:  FirstNum,
@@ -78,17 +79,16 @@ func fiveThreadsTest() {
 					log.Fatalf("could not greet: %v", err)
 				}
 			}
-			endTime := time.Now()
-			cntTime[cnt] = endTime.Sub(startTime).Milliseconds()
+			cntTime[cnt] = time.Now().Sub(startTime).Microseconds()
 		}(core)
 	}
 	wg.Wait()
 
-	var all int64
+	var all float64
 	for _, t := range cntTime {
-		all = all + t
+		all = math.Max(float64(t), all)
 	}
-	log.Println(fmt.Sprintf("fiveThreadsTest cost time: %d 毫秒", all))
+	log.Println(fmt.Sprintf("fiveThreadsTest cost time: %.1f 微秒", all/MAX_WORK_NUM))
 }
 
 func threadPoolTest() {
